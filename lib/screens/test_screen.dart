@@ -153,11 +153,11 @@ class _TestScreenState extends State<TestScreen> {
                       leading: CircleAvatar(
                         backgroundColor: AppConstants.primaryGreen,
                         child: Text(
-                          budget.category[0].toUpperCase(),
+                          budget.categoryId[0].toUpperCase(),
                           style: const TextStyle(color: Colors.white),
                         ),
                       ),
-                      title: Text(budget.category),
+                      title: Text(budget.categoryId),
                       subtitle: Text(
                         'Limit: \$${budget.monthlyLimit} | Spent: \$${budget.currentSpent}',
                       ),
@@ -283,7 +283,7 @@ class _TestScreenState extends State<TestScreen> {
       final response = await _apiService.post('/budgets', {
         'userId': 'user123',
         'walletId': 'wallet123',
-        'category': 'Food',
+        'categoryId': 'c58708fc-b25c-4d68-b4f4-61d497710154',
         'monthlyLimit': 500.0,
         'month': _getCurrentMonth(),
       });

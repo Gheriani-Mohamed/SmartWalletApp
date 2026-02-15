@@ -1,62 +1,66 @@
-class SavingGoalModel {
-  final double currentAmount;
-  final String endDate;
+// saving_goal.dart
+import 'package:meta/meta.dart';
+
+@immutable
+class SavingGoal {
   final String id;
-  final String startDate;
-  final double targetAmount;
-  final String title;
   final String userId;
   final String walletId;
+  final String title;
+  final double targetAmount;
+  final double currentAmount;
+  final DateTime startDate;
+  final DateTime endDate;
+  final bool isCompleted;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  SavingGoalModel({
-    required this.currentAmount,
-    required this.endDate,
+  const SavingGoal({
     required this.id,
-    required this.startDate,
-    required this.targetAmount,
-    required this.title,
     required this.userId,
     required this.walletId,
+    required this.title,
+    required this.targetAmount,
+    required this.currentAmount,
+    required this.startDate,
+    required this.endDate,
+    required this.isCompleted,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  // Calculated properties
-  double get percentageComplete {
-    if (targetAmount == 0) return 0;
-    return (currentAmount / targetAmount) * 100;
-  }
-
-  bool get isCompleted => currentAmount >= targetAmount;
-  double get remainingAmount => targetAmount - currentAmount;
-
-  // Parse dates
-  DateTime get endDateTime => DateTime.parse(endDate);
-  DateTime get startDateTime => DateTime.parse(startDate);
-
-  // From JSON
-  factory SavingGoalModel.fromJson(Map<String, dynamic> json) {
-    return SavingGoalModel(
-      currentAmount: (json['currentAmount'] ?? 0).toDouble(),
-      endDate: json['endDate'] ?? '',
-      id: json['id'] ?? '',
-      startDate: json['startDate'] ?? '',
-      targetAmount: (json['targetAmount'] ?? 0).toDouble(),
-      title: json['title'] ?? '',
-      userId: json['userId'] ?? '',
-      walletId: json['walletId'] ?? '',
+  factory SavingGoal.fromJson(Map<String, dynamic> json) {
+    return SavingGoal(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      walletId: json['walletId'] as String,
+      title: json['title'] as String,
+      targetAmount: (json['targetAmount'] as num).toDouble(),
+      currentAmount: (json['currentAmount'] as num).toDouble(),
+      startDate: DateTime.parse(json['startDate'] as String),
+      endDate: DateTime.parse(json['endDate'] as String),
+      isCompleted: json['isCompleted'] as bool,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
   }
 
-  // To JSON
   Map<String, dynamic> toJson() {
     return {
-      'currentAmount': currentAmount,
-      'endDate': endDate,
       'id': id,
-      'startDate': startDate,
-      'targetAmount': targetAmount,
-      'title': title,
       'userId': userId,
       'walletId': walletId,
+      'title': title,
+      'targetAmount': targetAmount,
+      'currentAmount': currentAmount,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'isCompleted': isCompleted,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
     };
   }
+
+  double get progressPercentage =>
+      targetAmount == 0 ? 0 : (currentAmount / targetAmount) * 100;
 }

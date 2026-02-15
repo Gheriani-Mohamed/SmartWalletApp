@@ -5,24 +5,33 @@ class SavingGoalService {
   final ApiService _api = ApiService();
 
   // Get all saving goals for a user
-  Future<List<SavingGoalModel>> getUserSavingGoals(String userId) async {
+  Future<List<SavingGoal>> getUserSavingGoals(String userId) async {
     final response = await _api.get('/saving-goals/user/$userId');
-    return (response as List)
-        .map((json) => SavingGoalModel.fromJson(json))
-        .toList();
+    if (response is List) {
+      return response
+          .map((json) => SavingGoal.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    return [];
   }
 
   // Get saving goals for a specific wallet
-  Future<List<SavingGoalModel>> getWalletSavingGoals(String walletId) async {
+  Future<List<SavingGoal>> getWalletSavingGoals(String walletId) async {
     final response = await _api.get('/saving-goals/wallet/$walletId');
-    return (response as List)
-        .map((json) => SavingGoalModel.fromJson(json))
-        .toList();
+    if (response is List) {
+      return response
+          .map((json) => SavingGoal.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    return [];
   }
 
   // Get single saving goal by ID
-  Future<SavingGoalModel> getSavingGoalById(String goalId) async {
+  Future<SavingGoal?> getSavingGoalById(String goalId) async {
     final response = await _api.get('/saving-goals/$goalId');
-    return SavingGoalModel.fromJson(response);
+    if (response is Map<String, dynamic>) {
+      return SavingGoal.fromJson(response);
+    }
+    return null;
   }
 }

@@ -5,32 +5,44 @@ class WalletService {
   final ApiService _api = ApiService();
 
   // Get all wallets for a user
-  Future<List<WalletModel>> getUserWallets(String userId) async {
+  Future<List<Wallet>> getUserWallets(String userId) async {
     final response = await _api.get('/wallets/user/$userId');
-    return (response as List)
-        .map((json) => WalletModel.fromJson(json))
-        .toList();
+    if (response is List) {
+      return response
+          .map((json) => Wallet.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    return [];
   }
 
   // Get single wallet by ID
-  Future<WalletModel> getWalletById(String walletId) async {
+  Future<Wallet?> getWalletById(String walletId) async {
     final response = await _api.get('/wallets/$walletId');
-    return WalletModel.fromJson(response);
+    if (response is Map<String, dynamic>) {
+      return Wallet.fromJson(response);
+    }
+    return null;
   }
 
   // Get shared wallets for a user
-  Future<List<WalletModel>> getSharedWallets(String userId) async {
+  Future<List<Wallet>> getSharedWallets(String userId) async {
     final response = await _api.get('/wallets/user/$userId/shared');
-    return (response as List)
-        .map((json) => WalletModel.fromJson(json))
-        .toList();
+    if (response is List) {
+      return response
+          .map((json) => Wallet.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    return [];
   }
 
   // Get personal wallets for a user
-  Future<List<WalletModel>> getPersonalWallets(String userId) async {
+  Future<List<Wallet>> getPersonalWallets(String userId) async {
     final response = await _api.get('/wallets/user/$userId/personal');
-    return (response as List)
-        .map((json) => WalletModel.fromJson(json))
-        .toList();
+    if (response is List) {
+      return response
+          .map((json) => Wallet.fromJson(Map<String, dynamic>.from(json)))
+          .toList();
+    }
+    return [];
   }
 }
