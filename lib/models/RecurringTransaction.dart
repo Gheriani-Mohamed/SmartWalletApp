@@ -1,26 +1,21 @@
-// recurring_transaction.dart
-import 'package:meta/meta.dart';
+import 'package:flutter/material.dart';
 
-@immutable
-class RecurringTransaction {
+class RecurringTransactionModel {
   final String id;
   final String userId;
   final String walletId;
   final String categoryId;
   final double amount;
-  final String type; // 'income' or 'expense'
+  final String type;
   final String? description;
-  final String frequency; // 'daily', 'weekly', 'monthly', 'yearly'
+  final String frequency;
   final DateTime startDate;
   final DateTime? endDate;
   final DateTime lastGenerated;
   final bool isActive;
   final DateTime createdAt;
 
-  // Relations
-  final List<String> transactionIds; // Generated transactions from this template
-
-  const RecurringTransaction({
+  RecurringTransactionModel({
     required this.id,
     required this.userId,
     required this.walletId,
@@ -34,34 +29,61 @@ class RecurringTransaction {
     required this.lastGenerated,
     required this.isActive,
     required this.createdAt,
-    this.transactionIds = const [],
   });
 
-  factory RecurringTransaction.fromJson(Map<String, dynamic> json) {
-    return RecurringTransaction(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      walletId: json['walletId'] as String,
-      categoryId: json['categoryId'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      type: json['type'] as String,
-      description: json['description'] as String?,
-      frequency: json['frequency'] as String,
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate'] as String) : null,
-      lastGenerated: DateTime.parse(json['lastGenerated'] as String),
-      isActive: json['isActive'] as bool,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      transactionIds: (json['transactions'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-          [],
+  DateTime get nextOccurrence {
+    DateTime next = lastGenerated;
+
+    switch (frequency) {
+      case 'daily':
+        next = next.add(const Duration(days: 1));
+        break;
+      case 'weekly':
+        next = next.add(const Duration(days: 7));
+        break;
+      case 'monthly':
+        next = DateTime(next.year, next.month + 1, next.day);
+        break;
+      case 'yearly':
+        next = DateTime(next.year + 1, next.month, next.day);
+        break;
+    }
+
+    return next;
+  }
+
+  bool get isOverdue => nextOccurrence.isBefore(DateTime.now());
+
+  String get frequencyDisplay {
+    switch (frequency) {
+      case 'daily': return 'Daily';
+      case 'weekly': return 'Weekly';
+      case 'monthly': return 'Monthly';
+      case 'yearly': return 'Yearly';
+      default: return frequency;
+    }
+  }
+
+  factory RecurringTransactionModel.fromJson(Map<String, dynamic> json) {
+    return RecurringTransactionModel(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      walletId: json['walletId'] ?? '',
+      categoryId: json['categoryId'] ?? '',
+      amount: (json['amount'] ?? 0).toDouble(),
+      type: json['type'] ?? 'expense',
+      description: json['description'],
+      frequency: json['frequency'] ?? 'monthly',
+      startDate: DateTime.parse(json['startDate']),
+      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+      lastGenerated: DateTime.parse(json['lastGenerated']),
+      isActive: json['isActive'] ?? true,
+      createdAt: DateTime.parse(json['createdAt']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'userId': userId,
       'walletId': walletId,
       'categoryId': categoryId,
@@ -71,10 +93,6 @@ class RecurringTransaction {
       'frequency': frequency,
       'startDate': startDate.toIso8601String(),
       'endDate': endDate?.toIso8601String(),
-      'lastGenerated': lastGenerated.toIso8601String(),
-      'isActive': isActive,
-      'createdAt': createdAt.toIso8601String(),
-      'transactions': transactionIds,
     };
   }
 }

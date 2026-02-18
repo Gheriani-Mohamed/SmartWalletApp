@@ -1,10 +1,12 @@
+import 'package:flutter/material.dart';
+
 class BudgetModel {
   final String id;
   final String userId;
   final String walletId;
-  final String categoryId;        // CHANGED: was 'category'
+  final String categoryId;
   final double monthlyLimit;
-  final String month;
+  final String month; // "2026-02"
   final double currentSpent;
   final bool isActive;
   final DateTime createdAt;
@@ -12,6 +14,7 @@ class BudgetModel {
 
   // Optional: Category details if included from backend
   final CategoryDetails? category;
+  final WalletInfo? wallet;
 
   BudgetModel({
     required this.id,
@@ -25,6 +28,7 @@ class BudgetModel {
     required this.createdAt,
     required this.updatedAt,
     this.category,
+    this.wallet,
   });
 
   // Calculated properties
@@ -38,13 +42,21 @@ class BudgetModel {
   bool get isAtWarning => percentageSpent >= 75;
   double get remainingAmount => monthlyLimit - currentSpent;
 
+  // Status color
+  Color get statusColor {
+    if (isOverspent) return Colors.red;
+    if (isNearLimit) return Colors.orange;
+    if (isAtWarning) return Colors.amber;
+    return Colors.green;
+  }
+
   // From JSON
   factory BudgetModel.fromJson(Map<String, dynamic> json) {
     return BudgetModel(
       id: json['id'] ?? '',
       userId: json['userId'] ?? '',
       walletId: json['walletId'] ?? '',
-      categoryId: json['categoryId'] ?? '',  // CHANGED
+      categoryId: json['categoryId'] ?? '',
       monthlyLimit: (json['monthlyLimit'] ?? 0).toDouble(),
       month: json['month'] ?? '',
       currentSpent: (json['currentSpent'] ?? 0).toDouble(),
@@ -54,38 +66,35 @@ class BudgetModel {
       category: json['category'] != null
           ? CategoryDetails.fromJson(json['category'])
           : null,
+      wallet: json['wallet'] != null
+          ? WalletInfo.fromJson(json['wallet'])
+          : null,
     );
   }
 
   // To JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'userId': userId,
       'walletId': walletId,
-      'categoryId': categoryId,  // CHANGED
+      'categoryId': categoryId,
       'monthlyLimit': monthlyLimit,
       'month': month,
-      'currentSpent': currentSpent,
-      'isActive': isActive,
     };
   }
 }
 
-// Helper class for category details
 class CategoryDetails {
   final String id;
   final String name;
   final String iconName;
   final String colorValue;
-  final String type;
 
   CategoryDetails({
     required this.id,
     required this.name,
     required this.iconName,
     required this.colorValue,
-    required this.type,
   });
 
   factory CategoryDetails.fromJson(Map<String, dynamic> json) {
@@ -94,6 +103,25 @@ class CategoryDetails {
       name: json['name'] ?? '',
       iconName: json['iconName'] ?? '',
       colorValue: json['colorValue'] ?? '',
+    );
+  }
+}
+
+class WalletInfo {
+  final String id;
+  final String name;
+  final String type;
+
+  WalletInfo({
+    required this.id,
+    required this.name,
+    required this.type,
+  });
+
+  factory WalletInfo.fromJson(Map<String, dynamic> json) {
+    return WalletInfo(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
       type: json['type'] ?? '',
     );
   }

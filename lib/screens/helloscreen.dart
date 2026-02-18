@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:smart_wallet_app/utils/constants.dart';
-import 'package:smart_wallet_app/screens/test_screen.dart';
+import 'package:smart_wallet_app/screens/walletListScreen.dart';
 
 class HelloScreen extends StatelessWidget {
   const HelloScreen({super.key});
@@ -50,10 +50,12 @@ class HelloScreen extends StatelessWidget {
                 const SizedBox(height: 60),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.push(
+                    Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const TestScreen(),
+                        builder: (context) => const WalletListScreen(
+                          userId: 'user123', // TODO: Replace with real userId from auth
+                        ),
                       ),
                     );
                   },
@@ -69,7 +71,7 @@ class HelloScreen extends StatelessWidget {
                     ),
                   ),
                   child: const Text(
-                    'Test API Connection',
+                    'Get Started',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,

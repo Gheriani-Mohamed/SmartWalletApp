@@ -2,15 +2,16 @@ class TransactionModel {
   final String id;
   final String userId;
   final String walletId;
-  final String categoryId;  // CHANGED: was 'category'
+  final String categoryId;
   final double amount;
-  final String type; // 'expense' or 'income'
+  final String type; // 'income' or 'expense'
   final String? description;
   final DateTime date;
   final String? recurringTransactionId;
 
   // Optional: Category details if included from backend
   final CategoryDetails? category;
+  final WalletInfo? wallet;
 
   TransactionModel({
     required this.id,
@@ -23,6 +24,7 @@ class TransactionModel {
     required this.date,
     this.recurringTransactionId,
     this.category,
+    this.wallet,
   });
 
   // From JSON
@@ -31,7 +33,7 @@ class TransactionModel {
       id: json['id'] ?? '',
       userId: json['userId'] ?? '',
       walletId: json['walletId'] ?? '',
-      categoryId: json['categoryId'] ?? '',  // CHANGED
+      categoryId: json['categoryId'] ?? '',
       amount: (json['amount'] ?? 0).toDouble(),
       type: json['type'] ?? 'expense',
       description: json['description'],
@@ -40,37 +42,39 @@ class TransactionModel {
       category: json['category'] != null
           ? CategoryDetails.fromJson(json['category'])
           : null,
+      wallet: json['wallet'] != null
+          ? WalletInfo.fromJson(json['wallet'])
+          : null,
     );
   }
 
   // To JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'userId': userId,
       'walletId': walletId,
-      'categoryId': categoryId,  // CHANGED
+      'categoryId': categoryId,
       'amount': amount,
       'type': type,
       'description': description,
       'date': date.toIso8601String(),
-      'recurringTransactionId': recurringTransactionId,
     };
   }
 }
 
-// Helper class for category details
 class CategoryDetails {
   final String id;
   final String name;
   final String iconName;
   final String colorValue;
+  final String type;
 
   CategoryDetails({
     required this.id,
     required this.name,
     required this.iconName,
     required this.colorValue,
+    required this.type,
   });
 
   factory CategoryDetails.fromJson(Map<String, dynamic> json) {
@@ -79,6 +83,27 @@ class CategoryDetails {
       name: json['name'] ?? '',
       iconName: json['iconName'] ?? '',
       colorValue: json['colorValue'] ?? '',
+      type: json['type'] ?? '',
+    );
+  }
+}
+
+class WalletInfo {
+  final String id;
+  final String name;
+  final String type;
+
+  WalletInfo({
+    required this.id,
+    required this.name,
+    required this.type,
+  });
+
+  factory WalletInfo.fromJson(Map<String, dynamic> json) {
+    return WalletInfo(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      type: json['type'] ?? '',
     );
   }
 }

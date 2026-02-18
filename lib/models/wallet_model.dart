@@ -1,8 +1,4 @@
-// wallet.dart
-import 'package:meta/meta.dart';
-
-@immutable
-class Wallet {
+class WalletModel {
   final String id;
   final String name;
   final String type; // 'personal', 'family', 'company'
@@ -10,15 +6,9 @@ class Wallet {
   final String currency;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<WalletMember> members;
 
-  // Relations (store IDs only)
-  final List<String> memberIds;
-  final List<String> transactionIds;
-  final List<String> budgetIds;
-  final List<String> savingGoalIds;
-  final List<String> recurringTransactionIds;
-
-  const Wallet({
+  WalletModel({
     required this.id,
     required this.name,
     required this.type,
@@ -26,45 +16,32 @@ class Wallet {
     required this.currency,
     required this.createdAt,
     required this.updatedAt,
-    this.memberIds = const [],
-    this.transactionIds = const [],
-    this.budgetIds = const [],
-    this.savingGoalIds = const [],
-    this.recurringTransactionIds = const [],
+    required this.members,
   });
 
-  factory Wallet.fromJson(Map<String, dynamic> json) {
-    return Wallet(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      type: json['type'] as String,
-      balance: (json['balance'] as num).toDouble(),
-      currency: json['currency'] as String? ?? 'USD',
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-      memberIds: (json['members'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-          [],
-      transactionIds: (json['transactions'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-          [],
-      budgetIds: (json['budgets'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-          [],
-      savingGoalIds: (json['savingGoals'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-          [],
-      recurringTransactionIds: (json['recurringTransactions'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-          [],
+  // Check if wallet is shared
+  bool get isShared => members.length > 1;
+
+  // Get member count
+  int get memberCount => members.length;
+
+  // From JSON
+  factory WalletModel.fromJson(Map<String, dynamic> json) {
+    return WalletModel(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      type: json['type'] ?? 'personal',
+      balance: (json['balance'] ?? 0).toDouble(),
+      currency: json['currency'] ?? 'USD',
+      createdAt: DateTime.parse(json['createdAt']),
+      updatedAt: DateTime.parse(json['updatedAt']),
+      members: (json['members'] as List?)
+          ?.map((m) => WalletMember.fromJson(m))
+          .toList() ?? [],
     );
   }
 
+  // To JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -72,13 +49,52 @@ class Wallet {
       'type': type,
       'balance': balance,
       'currency': currency,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-      'members': memberIds,
-      'transactions': transactionIds,
-      'budgets': budgetIds,
-      'savingGoals': savingGoalIds,
-      'recurringTransactions': recurringTransactionIds,
     };
+  }
+}
+
+class WalletMember {
+  final String id;
+  final String userId;
+  final String walletId;
+  final DateTime joinedAt;
+  final UserInfo user;
+
+  WalletMember({
+    required this.id,
+    required this.userId,
+    required this.walletId,
+    required this.joinedAt,
+    required this.user,
+  });
+
+  factory WalletMember.fromJson(Map<String, dynamic> json) {
+    return WalletMember(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      walletId: json['walletId'] ?? '',
+      joinedAt: DateTime.parse(json['joinedAt']),
+      user: UserInfo.fromJson(json['user'] ?? {}),
+    );
+  }
+}
+
+class UserInfo {
+  final String id;
+  final String name;
+  final String email;
+
+  UserInfo({
+    required this.id,
+    required this.name,
+    required this.email,
+  });
+
+  factory UserInfo.fromJson(Map<String, dynamic> json) {
+    return UserInfo(
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+    );
   }
 }
