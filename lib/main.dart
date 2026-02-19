@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smart_wallet_app/screens/WalletScreen.dart';
 import 'package:smart_wallet_app/screens/helloscreen.dart';
 import 'package:smart_wallet_app/utils/constants.dart';
 
@@ -21,7 +22,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      home: const HelloScreen(),
+      home: const WalletScreen(),
     );
   }
 }
