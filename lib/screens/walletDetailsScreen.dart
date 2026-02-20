@@ -394,7 +394,9 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                   const SizedBox(height: 24),
 
                   // Members Section
-                  _buildMembersSection(wallet),
+                  if (wallet.type != 'personal') ...[
+                    _buildMembersSection(wallet),
+                  ],
                 ],
               ),
             ),
