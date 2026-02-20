@@ -1,17 +1,15 @@
-// alert.dart
-import 'package:meta/meta.dart';
+import 'package:flutter/material.dart';
 
-@immutable
-class Alert {
+class AlertModel {
   final String id;
   final String userId;
   final String budgetId;
   final String message;
-  final AlertType alertType;
+  final String alertType; // 'info', 'warning', 'danger'
   final bool isRead;
   final DateTime createdAt;
 
-  const Alert({
+  AlertModel({
     required this.id,
     required this.userId,
     required this.budgetId,
@@ -21,53 +19,46 @@ class Alert {
     required this.createdAt,
   });
 
-  factory Alert.fromJson(Map<String, dynamic> json) {
-    return Alert(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      budgetId: json['budgetId'] as String,
-      message: json['message'] as String,
-      alertType: _alertTypeFromString(json['alertType'] as String),
-      isRead: json['isRead'] as bool,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+  Color get color {
+    switch (alertType) {
+      case 'danger':
+        return Colors.red;
+      case 'warning':
+        return Colors.orange;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  IconData get icon {
+    switch (alertType) {
+      case 'danger':
+        return Icons.error;
+      case 'warning':
+        return Icons.warning;
+      default:
+        return Icons.info;
+    }
+  }
+
+  factory AlertModel.fromJson(Map<String, dynamic> json) {
+    return AlertModel(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      budgetId: json['budgetId'] ?? '',
+      message: json['message'] ?? '',
+      alertType: json['alertType'] ?? 'info',
+      isRead: json['isRead'] ?? false,
+      createdAt: DateTime.parse(json['createdAt']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'userId': userId,
       'budgetId': budgetId,
       'message': message,
-      'alertType': _alertTypeToString(alertType),
-      'isRead': isRead,
-      'createdAt': createdAt.toIso8601String(),
+      'alertType': alertType,
     };
   }
-
-  static AlertType _alertTypeFromString(String value) {
-    switch (value) {
-      case 'warning':
-        return AlertType.warning;
-      case 'danger':
-        return AlertType.danger;
-      case 'info':
-        return AlertType.info;
-      default:
-        throw ArgumentError('Unknown alertType: $value');
-    }
-  }
-
-  static String _alertTypeToString(AlertType type) {
-    switch (type) {
-      case AlertType.warning:
-        return 'warning';
-      case AlertType.danger:
-        return 'danger';
-      case AlertType.info:
-        return 'info';
-    }
-  }
 }
-
-enum AlertType { warning, danger, info }

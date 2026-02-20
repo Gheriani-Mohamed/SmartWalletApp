@@ -4,34 +4,46 @@ import 'package:smart_wallet_app/models/AlertModel.dart';
 class AlertService {
   final ApiService _api = ApiService();
 
-  // Get all alerts for a user
-  Future<List<Alert>> getUserAlerts(String userId) async {
+  // Get all alerts for user
+  Future<List<AlertModel>> getUserAlerts(String userId) async {
     final response = await _api.get('/alerts/user/$userId');
-    if (response is List) {
-      return response
-          .map((json) => Alert.fromJson(Map<String, dynamic>.from(json)))
-          .toList();
-    }
-    return [];
+    return (response as List)
+        .map((json) => AlertModel.fromJson(json))
+        .toList();
   }
 
-  // Get unread alerts only
-  Future<List<Alert>> getUnreadAlerts(String userId) async {
-    final response = await _api.get('/alerts/unread/$userId');
-    if (response is List) {
-      return response
-          .map((json) => Alert.fromJson(Map<String, dynamic>.from(json)))
-          .toList();
-    }
-    return [];
+  // Get unread alerts
+  Future<List<AlertModel>> getUnreadAlerts(String userId) async {
+    final response = await _api.get('/alerts/user/$userId/unread');
+    return (response as List)
+        .map((json) => AlertModel.fromJson(json))
+        .toList();
   }
 
-  // Get unread alert count (for badge)
+  // Get unread count
   Future<int> getUnreadCount(String userId) async {
-    final response = await _api.get('/alerts/count/$userId');
-    if (response is Map<String, dynamic>) {
-      return response['count'] as int? ?? 0;
-    }
-    return 0;
+    final response = await _api.get('/alerts/user/$userId/count');
+    return response['count'] ?? 0;
+  }
+
+  // Mark alert as read
+  Future<AlertModel> markAsRead(String alertId) async {
+    final response = await _api.put('/alerts/$alertId/read', {});
+    return AlertModel.fromJson(response);
+  }
+
+  // Mark all as read
+  Future<void> markAllAsRead(String userId) async {
+    await _api.put('/alerts/user/$userId/read-all', {});
+  }
+
+  // Delete alert
+  Future<void> deleteAlert(String alertId) async {
+    await _api.delete('/alerts/$alertId');
+  }
+
+  // Delete all alerts
+  Future<void> deleteAllAlerts(String userId) async {
+    await _api.delete('/alerts/user/$userId/all');
   }
 }

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:smart_wallet_app/services/wallet_service.dart';
+import 'package:smart_wallet_app/services/RecurringTransactionService.dart';
+import 'package:smart_wallet_app/services/AlertService.dart';
 import 'package:smart_wallet_app/models/wallet_model.dart';
+import 'package:smart_wallet_app/models/RecurringTransaction.dart';
+import 'package:smart_wallet_app/models/AlertModel.dart';
 import 'package:smart_wallet_app/utils/constants.dart';
 import 'package:smart_wallet_app/screens/editWalletScreen.dart';
 import 'package:smart_wallet_app/screens/transactionListScreen.dart';
@@ -23,12 +27,176 @@ class WalletDetailsScreen extends StatefulWidget {
 
 class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
   final WalletService _walletService = WalletService();
+  final RecurringTransactionService _recurringService = RecurringTransactionService();
+  final AlertService _alertService = AlertService();
   final _addMemberController = TextEditingController();
+  int _unreadAlertsCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadAlerts();
+    // Check and auto-generate recurring transactions when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndGenerateRecurring();
+    });
+  }
 
   @override
   void dispose() {
     _addMemberController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUnreadAlerts() async {
+    try {
+      final alerts = await _alertService.getUserAlerts(widget.userId);
+      final unreadCount = alerts.where((a) => !a.isRead).length;
+
+      if (mounted) {
+        setState(() {
+          _unreadAlertsCount = unreadCount;
+        });
+      }
+    } catch (e) {
+      print('Error loading alerts: $e');
+    }
+  }
+
+  Future<void> _checkAndGenerateRecurring() async {
+    try {
+      // Get all recurring transactions for this wallet
+      final recurring = await _recurringService.getWalletRecurring(widget.walletId);
+
+      // Count overdue ones
+      final overdueList = recurring.where((r) => r.isOverdue).toList();
+      final overdueCount = overdueList.length;
+
+      if (overdueCount > 0) {
+        // Show confirmation popup
+        if (!mounted) return;
+
+        final shouldGenerate = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.repeat, color: Colors.orange[700]),
+                const SizedBox(width: 12),
+                const Text('Recurring Transactions'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'You have $overdueCount pending recurring transaction${overdueCount > 1 ? 's' : ''}:',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                ...overdueList.take(3).map((r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.circle,
+                        size: 8,
+                        color: r.type == 'income' ? Colors.green : Colors.red,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${r.description ?? 'Transaction'} (\$${r.amount.toStringAsFixed(2)})',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+                if (overdueCount > 3)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      'and ${overdueCount - 3} more...',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Generate them now?',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Later'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppConstants.primaryGreen,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Generate Now'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldGenerate == true && mounted) {
+          // Show loading
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+
+          try {
+            // Generate all due transactions
+            final result = await _recurringService.generateAllUserTransactions(widget.userId);
+            final generatedCount = result['totalGenerated'] ?? 0;
+
+            if (!mounted) return;
+
+            // Close loading
+            Navigator.pop(context);
+
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Generated $generatedCount transaction(s)!'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+
+            // Refresh the screen
+            setState(() {});
+          } catch (e) {
+            if (!mounted) return;
+
+            // Close loading
+            Navigator.pop(context);
+
+            // Show error
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error generating transactions: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking recurring transactions: $e');
+    }
   }
 
   @override
@@ -39,6 +207,40 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         backgroundColor: AppConstants.primaryGreen,
         foregroundColor: Colors.white,
         actions: [
+          // Alerts Icon with Badge
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications),
+                onPressed: () => _showAlertsBottomSheet(),
+              ),
+              if (_unreadAlertsCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      _unreadAlertsCount > 9 ? '9+' : '$_unreadAlertsCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () => _showEditDialog(),
@@ -567,6 +769,188 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
     } catch (e) {
       if (!mounted) return;
       _showSnackBar('Error: $e', Colors.red);
+    }
+  }
+
+  void _showAlertsBottomSheet() async {
+    final alerts = await _alertService.getUserAlerts(widget.userId);
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Budget Alerts',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (alerts.any((a) => !a.isRead))
+                    TextButton(
+                      onPressed: () async {
+                        // Mark all as read
+                        for (var alert in alerts.where((a) => !a.isRead)) {
+                          await _alertService.markAsRead(alert.id);
+                        }
+                        Navigator.pop(context);
+                        _loadUnreadAlerts();
+                        setState(() {});
+                      },
+                      child: const Text('Mark All Read'),
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Alerts List
+            Expanded(
+              child: alerts.isEmpty
+                  ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.notifications_off,
+                      size: 64,
+                      color: Colors.grey[300],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No alerts',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+                  : ListView.builder(
+                controller: scrollController,
+                itemCount: alerts.length,
+                itemBuilder: (context, index) {
+                  final alert = alerts[index];
+                  return _buildAlertCard(alert);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).then((_) {
+      // Refresh alert count when bottom sheet closes
+      _loadUnreadAlerts();
+    });
+  }
+
+  Widget _buildAlertCard(AlertModel alert) {
+    Color color;
+    IconData icon;
+
+    switch (alert.alertType) {
+      case 'danger':
+        color = Colors.red;
+        icon = Icons.error;
+        break;
+      case 'warning':
+        color = Colors.orange;
+        icon = Icons.warning;
+        break;
+      default:
+        color = Colors.blue;
+        icon = Icons.info;
+    }
+
+    return Dismissible(
+      key: Key(alert.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 16),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (direction) async {
+        await _alertService.deleteAlert(alert.id);
+        _loadUnreadAlerts();
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: alert.isRead ? Colors.white : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: alert.isRead ? Colors.grey[300]! : color.withOpacity(0.3),
+          ),
+        ),
+        child: ListTile(
+          leading: Icon(icon, color: color),
+          title: Text(
+            alert.message,
+            style: TextStyle(
+              fontWeight: alert.isRead ? FontWeight.normal : FontWeight.bold,
+            ),
+          ),
+          subtitle: Text(
+            _formatAlertDate(alert.createdAt),
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+          trailing: alert.isRead
+              ? null
+              : Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          onTap: () async {
+            if (!alert.isRead) {
+              await _alertService.markAsRead(alert.id);
+              _loadUnreadAlerts();
+              setState(() {});
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  String _formatAlertDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inDays == 0) {
+      if (diff.inHours == 0) {
+        return '${diff.inMinutes}m ago';
+      }
+      return '${diff.inHours}h ago';
+    } else if (diff.inDays == 1) {
+      return 'Yesterday';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays}d ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
     }
   }
 

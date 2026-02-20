@@ -52,7 +52,19 @@ class RecurringTransactionModel {
     return next;
   }
 
-  bool get isOverdue => nextOccurrence.isBefore(DateTime.now());
+  bool get isOverdue {
+    // Strip time to compare dates at midnight
+    final nextMidnight = DateTime(
+      nextOccurrence.year,
+      nextOccurrence.month,
+      nextOccurrence.day,
+    );
+
+    final todayWithTime = DateTime.now();
+
+    // Overdue if next date is BEFORE today (not including today)
+    return nextMidnight.isBefore(todayWithTime);
+  }
 
   String get frequencyDisplay {
     switch (frequency) {

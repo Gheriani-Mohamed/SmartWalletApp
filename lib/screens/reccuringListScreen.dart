@@ -88,68 +88,278 @@ class _RecurringListScreenState extends State<RecurringListScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            Icons.repeat,
-            color: color,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          recurring.description ?? 'Recurring ${recurring.type}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              '\$${recurring.amount.toStringAsFixed(2)} • ${recurring.frequencyDisplay}',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  isOverdue ? Icons.warning : Icons.schedule,
-                  size: 14,
-                  color: isOverdue ? Colors.orange : Colors.grey[600],
+      child: InkWell(
+        onTap: () => _showRecurringDetails(recurring), // 🔥 Show details on tap
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  isOverdue
-                      ? 'Overdue! Generate now'
-                      : 'Next: ${DateFormat('MMM dd').format(nextDate)}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isOverdue ? Colors.orange : Colors.grey[600],
-                    fontWeight: isOverdue ? FontWeight.bold : FontWeight.normal,
-                  ),
+                child: Icon(
+                  Icons.repeat,
+                  color: color,
+                  size: 24,
                 ),
-              ],
-            ),
-          ],
-        ),
-        trailing: PopupMenuButton(
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'generate', child: Text('Generate Now')),
-            const PopupMenuItem(value: 'delete', child: Text('Delete')),
-          ],
-          onSelected: (value) {
-            if (value == 'generate') {
-              _generateNow(recurring);
-            } else if (value == 'delete') {
-              _confirmDelete(recurring);
-            }
-          },
+              ),
+              const SizedBox(width: 16),
+
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      recurring.description ?? 'Recurring ${recurring.type}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '\$${recurring.amount.toStringAsFixed(2)} • ${recurring.frequencyDisplay}',
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          isOverdue ? Icons.warning : Icons.schedule,
+                          size: 14,
+                          color: isOverdue ? Colors.orange : Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isOverdue
+                              ? 'Overdue! Generate now'
+                              : 'Next: ${DateFormat('MMM dd').format(nextDate)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isOverdue ? Colors.orange : Colors.grey[600],
+                            fontWeight: isOverdue ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Menu button
+              PopupMenuButton(
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'generate', child: Text('Generate Now')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                ],
+                onSelected: (value) {
+                  if (value == 'generate') {
+                    _generateNow(recurring);
+                  } else if (value == 'delete') {
+                    _confirmDelete(recurring);
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showRecurringDetails(RecurringTransactionModel recurring) {
+    final isIncome = recurring.type == 'income';
+    final color = isIncome ? Colors.green : Colors.red;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with icon
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Title
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.repeat, color: color, size: 32),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          recurring.description ?? 'Recurring Transaction',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          recurring.type.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: color,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Amount
+              _detailRow('Amount', '\$${recurring.amount.toStringAsFixed(2)}', color),
+              const Divider(height: 24),
+
+              // Frequency
+              _detailRow('Frequency', recurring.frequencyDisplay, Colors.grey[800]!),
+              const Divider(height: 24),
+
+              // Start Date
+              _detailRow(
+                'Start Date',
+                DateFormat('MMM dd, yyyy – HH:mm')
+                    .format(recurring.startDate),
+                Colors.grey[800]!,
+              ),
+              const Divider(height: 24),
+
+              // End Date
+              _detailRow(
+                'End Date',
+                recurring.endDate != null
+                    ? DateFormat('MMM dd, yyyy').format(recurring.endDate!)
+                    : 'No end date',
+                Colors.grey[800]!,
+              ),
+              const Divider(height: 24),
+
+              // Last Generated
+              _detailRow(
+                'Last Generated',
+                DateFormat('MMM dd, yyyy').format(recurring.lastGenerated),
+                Colors.grey[800]!,
+              ),
+              const Divider(height: 24),
+
+              // Next Occurrence
+              _detailRow(
+                'Next Generation',
+                recurring.isOverdue
+                    ? 'OVERDUE - Generate now!'
+                    : DateFormat('MMM dd, yyyy – HH:mm').format(recurring.nextOccurrence),
+                recurring.isOverdue ? Colors.orange : Colors.grey[800]!,
+              ),
+              const Divider(height: 24),
+
+              // Status
+              _detailRow(
+                'Status',
+                recurring.isActive ? 'Active' : 'Inactive',
+                recurring.isActive ? Colors.green : Colors.red,
+              ),
+              const SizedBox(height: 32),
+
+              // Action Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _generateNow(recurring);
+                      },
+                      icon: const Icon(Icons.sync),
+                      label: const Text('Generate Now'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppConstants.primaryGreen,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _confirmDelete(recurring);
+                      },
+                      icon: const Icon(Icons.delete),
+                      label: const Text('Delete'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value, Color valueColor) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: valueColor,
+          ),
+        ),
+      ],
     );
   }
 

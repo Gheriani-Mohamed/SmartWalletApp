@@ -16,6 +16,12 @@ class RecurringTransactionService {
     required DateTime startDate,
     DateTime? endDate,
   }) async {
+    // Format dates as YYYY-MM-DD to avoid timezone issues
+    final startDateString = '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}';
+    final endDateString = endDate != null
+        ? '${endDate.year}-${endDate.month.toString().padLeft(2, '0')}-${endDate.day.toString().padLeft(2, '0')}'
+        : null;
+
     final response = await _api.post('/recurring-transactions', {
       'userId': userId,
       'walletId': walletId,
@@ -24,8 +30,8 @@ class RecurringTransactionService {
       'type': type,
       'description': description,
       'frequency': frequency,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate?.toIso8601String(),
+      'startDate': startDateString,  // Send as YYYY-MM-DD string
+      'endDate': endDateString,      // Send as YYYY-MM-DD string
     });
 
     return RecurringTransactionModel.fromJson(response);

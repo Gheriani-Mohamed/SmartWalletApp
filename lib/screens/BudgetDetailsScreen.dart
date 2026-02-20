@@ -270,7 +270,7 @@ class _BudgetDetailsScreenState extends State<BudgetDetailsScreen> {
   }
 
   Widget _buildAlertsSection(BudgetModel budget) {
-    return FutureBuilder<List<Alert>>(
+    return FutureBuilder<List<AlertModel>>(
       future: _alertService.getUserAlerts(budget.userId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -301,7 +301,7 @@ class _BudgetDetailsScreenState extends State<BudgetDetailsScreen> {
     );
   }
 
-  Widget _buildAlertCard(Alert alert) {
+  Widget _buildAlertCard(AlertModel alert) {
     Color color;
     IconData icon;
 
