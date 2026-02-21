@@ -10,6 +10,7 @@ import 'package:smart_wallet_app/screens/editWalletScreen.dart';
 import 'package:smart_wallet_app/screens/transactionListScreen.dart';
 import 'package:smart_wallet_app/screens/budgetListScreen.dart';
 import 'package:smart_wallet_app/screens/reccuringListScreen.dart';
+import 'package:smart_wallet_app/screens/saving_goal_list_screen.dart';
 
 class WalletDetailsScreen extends StatefulWidget {
   final String walletId;
@@ -387,6 +388,38 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  // Saving Goals button (full width)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SavingGoalsListScreen(
+                              walletId: wallet.id,
+                              userId: widget.userId,
+                            ),
+                          ),
+                        );
+
+                        if (result == true || result == null) {
+                          setState(() {});
+                        }
+                      },
+                      icon: const Icon(Icons.savings),
+                      label: const Text('Saving Goals'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
 
                   // Wallet Info
@@ -394,9 +427,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                   const SizedBox(height: 24),
 
                   // Members Section
-                  if (wallet.type != 'personal') ...[
-                    _buildMembersSection(wallet),
-                  ],
+                  _buildMembersSection(wallet),
                 ],
               ),
             ),

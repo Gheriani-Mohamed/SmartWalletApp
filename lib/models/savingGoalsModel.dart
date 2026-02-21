@@ -1,8 +1,6 @@
-// saving_goal.dart
-import 'package:meta/meta.dart';
+import 'package:flutter/material.dart';
 
-@immutable
-class SavingGoal {
+class SavingGoalModel {
   final String id;
   final String userId;
   final String walletId;
@@ -10,12 +8,11 @@ class SavingGoal {
   final double targetAmount;
   final double currentAmount;
   final DateTime startDate;
-  final DateTime endDate;
+  final DateTime? endDate;
   final bool isCompleted;
   final DateTime createdAt;
-  final DateTime updatedAt;
 
-  const SavingGoal({
+  SavingGoalModel({
     required this.id,
     required this.userId,
     required this.walletId,
@@ -23,44 +20,53 @@ class SavingGoal {
     required this.targetAmount,
     required this.currentAmount,
     required this.startDate,
-    required this.endDate,
+    this.endDate,
     required this.isCompleted,
     required this.createdAt,
-    required this.updatedAt,
   });
 
-  factory SavingGoal.fromJson(Map<String, dynamic> json) {
-    return SavingGoal(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      walletId: json['walletId'] as String,
-      title: json['title'] as String,
-      targetAmount: (json['targetAmount'] as num).toDouble(),
-      currentAmount: (json['currentAmount'] as num).toDouble(),
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: DateTime.parse(json['endDate'] as String),
-      isCompleted: json['isCompleted'] as bool,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-    );
+  // Calculate progress percentage
+  double get progressPercentage {
+    if (targetAmount == 0) return 0;
+    return ((currentAmount / targetAmount) * 100).clamp(0.0, 100.0);
+  }
+
+  // Remaining amount to goal
+  double get remainingAmount => targetAmount - currentAmount;
+
+  // Is goal reached
+  bool get isReached => currentAmount >= targetAmount;
+
+  // Progress color
+  Color get progressColor {
+    if (isCompleted) return Colors.green;
+    if (progressPercentage >= 75) return Colors.blue;
+    if (progressPercentage >= 50) return Colors.orange;
+    return Colors.grey;
+  }
+
+  factory SavingGoalModel.fromJson(Map<String, dynamic> json) {
+    return SavingGoalModel(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      walletId: json['walletId'] ?? '',
+      title: json['title'] ?? '',
+      targetAmount: (json['targetAmount'] ?? 0).toDouble(),
+      currentAmount: (json['currentAmount'] ?? 0).toDouble(),
+      startDate: json['startDate'] is String ? DateTime.parse(json['startDate']) : json['startDate'] is DateTime ? json['startDate'] : DateTime.now(),
+      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+      isCompleted: json['isCompleted'] ?? false,
+      createdAt: json['createdAt'] is String ? DateTime.parse(json['createdAt']) : json['createdAt'] is DateTime ? json['createdAt'] : DateTime.now(),   );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'userId': userId,
       'walletId': walletId,
       'title': title,
       'targetAmount': targetAmount,
-      'currentAmount': currentAmount,
-      'startDate': startDate.toIso8601String(),
-      'endDate': endDate.toIso8601String(),
-      'isCompleted': isCompleted,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      'startDate': startDate.toIso8601String().split('T')[0],
+      'endDate': endDate?.toIso8601String().split('T')[0],
     };
   }
-
-  double get progressPercentage =>
-      targetAmount == 0 ? 0 : (currentAmount / targetAmount) * 100;
 }
