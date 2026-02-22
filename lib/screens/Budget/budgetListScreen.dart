@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:smart_wallet_app/services/budget_service.dart';
 import 'package:smart_wallet_app/models/BudgetModel.dart';
 import 'package:smart_wallet_app/utils/constants.dart';
-import 'package:smart_wallet_app/screens/addBudgetScreen.dart';
-import 'package:smart_wallet_app/screens/BudgetDetailsScreen.dart';
+import 'package:smart_wallet_app/screens/Budget/addBudgetScreen.dart';
+import 'package:smart_wallet_app/screens/Budget/BudgetDetailsScreen.dart';
 
 class BudgetListScreen extends StatefulWidget {
   final String walletId;

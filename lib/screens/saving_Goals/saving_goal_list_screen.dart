@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:smart_wallet_app/services/savingGoals_service.dart';
 import 'package:smart_wallet_app/models/savingGoalsModel.dart';
 import 'package:smart_wallet_app/utils/constants.dart';
-import 'package:smart_wallet_app/screens/add_saving_goal_screen.dart';
-import 'package:smart_wallet_app/screens/saving_goal_details_screen.dart';
+import 'package:smart_wallet_app/screens/saving_Goals/add_saving_goal_screen.dart';
+import 'package:smart_wallet_app/screens/saving_Goals/saving_goal_details_screen.dart';
 
 class SavingGoalsListScreen extends StatefulWidget {
   final String walletId;

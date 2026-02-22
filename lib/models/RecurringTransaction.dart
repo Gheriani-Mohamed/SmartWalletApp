@@ -42,7 +42,32 @@ class RecurringTransactionModel {
         next = next.add(const Duration(days: 7));
         break;
       case 'monthly':
-        next = DateTime(next.year, next.month + 1, next.day);
+        {
+          int targetMonth = next.month + 1;
+          int targetYear = next.year;
+
+          if (targetMonth > 12) {
+            targetMonth = 1;
+            targetYear++;
+          }
+
+          // Dernier jour du mois cible
+          final firstOfTargetMonth = DateTime(targetYear, targetMonth, 1);
+          final lastDayOfTargetMonth =
+              DateTime(firstOfTargetMonth.year, firstOfTargetMonth.month + 1, 0).day;
+
+          // Utiliser le jour original ou le dernier jour valide
+          final safeDay =
+          next.day <= lastDayOfTargetMonth ? next.day : lastDayOfTargetMonth;
+
+          next = DateTime(
+            targetYear,
+            targetMonth,
+            safeDay,
+            next.hour,
+            next.minute,
+          );
+        }
         break;
       case 'yearly':
         next = DateTime(next.year + 1, next.month, next.day);

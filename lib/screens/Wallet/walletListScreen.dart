@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:smart_wallet_app/services/wallet_service.dart';
 import 'package:smart_wallet_app/models/wallet_model.dart';
 import 'package:smart_wallet_app/utils/constants.dart';
-import 'package:smart_wallet_app/screens/addWalletScreen.dart';
-import 'package:smart_wallet_app/screens/walletDetailsScreen.dart';
+import 'package:smart_wallet_app/screens/Wallet/addWalletScreen.dart';
+import 'package:smart_wallet_app/screens/Wallet/walletDetailsScreen.dart';
+import 'package:smart_wallet_app/widgets/AppDrawer.dart';
 
 class WalletListScreen extends StatefulWidget {
   final String userId;
@@ -16,7 +17,6 @@ class WalletListScreen extends StatefulWidget {
 
 class _WalletListScreenState extends State<WalletListScreen> {
   final WalletService _walletService = WalletService();
-  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +26,7 @@ class _WalletListScreenState extends State<WalletListScreen> {
         backgroundColor: AppConstants.primaryGreen,
         foregroundColor: Colors.white,
       ),
+      drawer: AppDrawer(userId: widget.userId),
       body: FutureBuilder<List<WalletModel>>(
         future: _loadWallets(),
         builder: (context, snapshot) {
@@ -57,40 +58,26 @@ class _WalletListScreenState extends State<WalletListScreen> {
             return _buildEmptyState();
           }
 
-          // Separate personal and shared wallets
           final personalWallets = wallets.where((w) => !w.isShared).toList();
           final sharedWallets = wallets.where((w) => w.isShared).toList();
 
           return RefreshIndicator(
             onRefresh: () async {
-              setState(() {});
+              if (mounted) setState(() {});
             },
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                // Personal Wallets Section
                 if (personalWallets.isNotEmpty) ...[
-                  const Text(
-                    'Personal Wallets',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  const Text('Personal Wallets',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   ...personalWallets.map((wallet) => _buildWalletCard(wallet)),
                   const SizedBox(height: 24),
                 ],
-
-                // Shared Wallets Section
                 if (sharedWallets.isNotEmpty) ...[
-                  const Text(
-                    'Shared Wallets',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  const Text('Shared Wallets',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
                   ...sharedWallets.map((wallet) => _buildWalletCard(wallet)),
                 ],
@@ -118,25 +105,17 @@ class _WalletListScreenState extends State<WalletListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.account_balance_wallet_outlined,
-            size: 100,
-            color: Colors.grey[300],
-          ),
+          Icon(Icons.account_balance_wallet_outlined,
+              size: 100, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
-            'No wallets yet',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text('No wallets yet',
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[600])),
           const SizedBox(height: 8),
-          Text(
-            'Create your first wallet to get started',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
+          Text('Create your first wallet to get started',
+              style: TextStyle(color: Colors.grey[600])),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: () => _navigateToAddWallet(),
@@ -184,22 +163,15 @@ class _WalletListScreenState extends State<WalletListScreen> {
             children: [
               Row(
                 children: [
-                  // Wallet Icon
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: walletColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
-                      walletIcon,
-                      color: walletColor,
-                      size: 28,
-                    ),
+                    child: Icon(walletIcon, color: walletColor, size: 28),
                   ),
                   const SizedBox(width: 16),
-
-                  // Wallet Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,63 +179,46 @@ class _WalletListScreenState extends State<WalletListScreen> {
                         Row(
                           children: [
                             Expanded(
-                              child: Text(
-                                wallet.name,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              child: Text(wallet.name,
+                                  style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold)),
                             ),
                             if (wallet.isShared)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                                    color: Colors.blue[50],
+                                    borderRadius: BorderRadius.circular(12)),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(
-                                      Icons.people,
-                                      size: 14,
-                                      color: Colors.blue,
-                                    ),
+                                    const Icon(Icons.people,
+                                        size: 14, color: Colors.blue),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      '${wallet.memberCount}',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.blue,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    Text('${wallet.memberCount}',
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.blue,
+                                            fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          wallet.type.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        Text(wallet.type.toUpperCase(),
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-
-              // Balance
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -273,20 +228,14 @@ class _WalletListScreenState extends State<WalletListScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Balance',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
+                    const Text('Balance',
+                        style: TextStyle(fontSize: 14, color: Colors.grey)),
                     Text(
                       '${wallet.currency} ${wallet.balance.toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppConstants.primaryGreen,
-                      ),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: AppConstants.primaryGreen),
                     ),
                   ],
                 ),
@@ -305,10 +254,8 @@ class _WalletListScreenState extends State<WalletListScreen> {
         builder: (context) => AddWalletScreen(userId: widget.userId),
       ),
     );
-
-    if (result == true) {
-      setState(() {}); // Refresh list
-    }
+    if (!mounted) return;
+    if (result == true) setState(() {});
   }
 
   void _navigateToDetails(WalletModel wallet) async {
@@ -321,10 +268,7 @@ class _WalletListScreenState extends State<WalletListScreen> {
         ),
       ),
     );
-
-    // Refresh list when coming back (balance might have changed)
-    if (result == true || result == null) {
-      setState(() {}); // Refresh the wallet list
-    }
+    if (!mounted) return;
+    if (result == true || result == null) setState(() {});
   }
 }

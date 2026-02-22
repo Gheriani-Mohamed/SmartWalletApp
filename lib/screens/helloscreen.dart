@@ -1,88 +1,60 @@
 import 'package:flutter/material.dart';
-import 'package:smart_wallet_app/utils/constants.dart';
-import 'package:smart_wallet_app/screens/walletListScreen.dart';
+import 'package:smart_wallet_app/services/AuthService.dart';
+import 'package:smart_wallet_app/screens/Login/loginScrenn.dart';
+import 'package:smart_wallet_app/screens/Wallet/walletListScreen.dart';
 
-class HelloScreen extends StatelessWidget {
-  const HelloScreen({super.key});
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppConstants.primaryGreen,
-              AppConstants.darkGreen,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.account_balance_wallet,
-                  size: 100,
-                  color: Colors.white,
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Smart Wallet',
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Manage Your Finances Smartly\nso in the end you can say العام صابة',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white70,
-                  ),
-                ),
-                const SizedBox(height: 60),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const WalletListScreen(
-                          userId: 'user123', // TODO: Replace with real userId from auth
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppConstants.primaryGreen,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 48,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                  ),
-                  child: const Text(
-                    'Get Started',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+    return FutureBuilder<bool>(
+      future: _authService.isLoggedIn(),
+      builder: (context, snapshot) {
+        // Loading state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
             ),
-          ),
-        ),
-      ),
+          );
+        }
+
+        // Check if logged in
+        if (snapshot.data == true) {
+          // User is logged in, get userId and go to WalletList
+          return FutureBuilder<String?>(
+            future: _authService.getUserId(),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              if (userSnapshot.hasData && userSnapshot.data != null) {
+                return WalletListScreen(userId: userSnapshot.data!);
+              }
+
+              // No userId found, logout and go to login
+              _authService.logout();
+              return const LoginScreen();
+            },
+          );
+        }
+
+        // Not logged in, go to login
+        return const LoginScreen();
+      },
     );
   }
 }

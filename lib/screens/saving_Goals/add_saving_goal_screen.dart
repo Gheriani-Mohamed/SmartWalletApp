@@ -20,8 +20,7 @@ class _AddSavingGoalScreenState extends State<AddSavingGoalScreen> {
   final _targetController = TextEditingController();
 
   DateTime _startDate = DateTime.now();
-  DateTime? _endDate;
-  bool _hasEndDate = false;
+  DateTime _endDate = DateTime.now().add(const Duration(days: 365));
   bool _isLoading = false;
 
   @override
@@ -99,17 +98,36 @@ class _AddSavingGoalScreenState extends State<AddSavingGoalScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              SwitchListTile(
-                title: const Text('Set End Date'),
-                subtitle: _hasEndDate && _endDate != null ? Text(DateFormat('MMM dd, yyyy').format(_endDate!)) : const Text('No end date'),
-                value: _hasEndDate,
-                onChanged: (v) {
-                  setState(() {
-                    _hasEndDate = v;
-                    if (v && _endDate == null) _endDate = _startDate.add(const Duration(days: 365));
-                  });
-                  if (v) _pickEndDate();
-                },
+              InkWell(
+                onTap: () => _pickEndDate(),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[400]!),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.event, color: Colors.grey[600]),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('End Date',
+                                style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            const SizedBox(height: 4),
+                            Text(
+                              DateFormat('MMM dd, yyyy').format(_endDate),
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               SizedBox(
@@ -135,13 +153,24 @@ class _AddSavingGoalScreenState extends State<AddSavingGoalScreen> {
   }
 
   Future<void> _pickStartDate() async {
+    if (_endDate.isBefore(_startDate)) {
+      _endDate = _startDate.add(const Duration(days: 30));
+    }
     final date = await showDatePicker(context: context, initialDate: _startDate, firstDate: DateTime.now(), lastDate: DateTime(2030));
     if (date != null) setState(() => _startDate = date);
   }
 
   Future<void> _pickEndDate() async {
-    final date = await showDatePicker(context: context, initialDate: _endDate ?? _startDate.add(const Duration(days: 365)), firstDate: _startDate, lastDate: DateTime(2030));
-    if (date != null) setState(() => _endDate = date);
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _endDate,
+      firstDate: _startDate,
+      lastDate: DateTime(2030),
+    );
+
+    if (date != null) {
+      setState(() => _endDate = date);
+    }
   }
 
   Future<void> _createGoal() async {
@@ -156,7 +185,7 @@ class _AddSavingGoalScreenState extends State<AddSavingGoalScreen> {
         title: _titleController.text.trim(),
         targetAmount: double.parse(_targetController.text),
         startDate: _startDate,
-        endDate: _hasEndDate ? _endDate : null,
+        endDate: _endDate,
       );
 
       if (!mounted) return;
