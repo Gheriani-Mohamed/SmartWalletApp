@@ -19,7 +19,8 @@ import 'package:smart_wallet_app/screens/Budget/budgetListScreen.dart';
 import 'package:smart_wallet_app/screens/ReccuringTransactions/reccuringListScreen.dart';
 import 'package:smart_wallet_app/screens/saving_Goals/saving_goal_list_screen.dart';
 import 'package:smart_wallet_app/screens/Analytics/AnalyticScrenn.dart';
-import 'package:smart_wallet_app/screens/Login//qrScannerScreen.dart';
+import 'package:smart_wallet_app/screens/Login/qrScannerScreen.dart';
+import 'package:smart_wallet_app/screens/Wallet/transferScreen.dart';
 
 class WalletDetailsScreen extends StatefulWidget {
   final String walletId;
@@ -65,10 +66,12 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
     super.dispose();
   }
 
+  // ✅ THE FIX: _loadWallet() called OUTSIDE setState
   void _refreshWallet() {
     if (!mounted) return;
+    final future = _loadWallet();
     setState(() {
-      _walletFuture = _loadWallet();
+      _walletFuture = future; // ← Block body
     });
   }
 
@@ -188,7 +191,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 3),
             ));
-            if (mounted) _refreshWallet();
+            _refreshWallet();
           } catch (e) {
             if (!mounted) return;
             Navigator.pop(context);
@@ -302,6 +305,14 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
     List<CategoryModel> categories = [];
     bool loadingCategories = true;
 
+    // Load categories BEFORE opening sheet to avoid async inside StatefulBuilder
+    CategoryService().getCategoriesByType('expense').then((cats) {
+      categories = cats;
+      loadingCategories = false;
+    }).catchError((_) {
+      loadingCategories = false;
+    });
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -310,17 +321,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            if (loadingCategories) {
-              CategoryService().getCategoriesByType('expense').then((cats) {
-                setSheetState(() {
-                  categories = cats;
-                  loadingCategories = false;
-                });
-              }).catchError((_) {
-                setSheetState(() => loadingCategories = false);
-              });
-            }
-
             return Padding(
               padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
               child: DraggableScrollableSheet(
@@ -1149,6 +1149,8 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
   }
 
   @override
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -1172,8 +1174,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                     constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                     child: Text(
                       _unreadAlertsCount > 9 ? '9+' : '$_unreadAlertsCount',
-                      style: const TextStyle(color: Colors.white, fontSize: 10,
-                          fontWeight: FontWeight.bold),
+                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -1211,7 +1212,14 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
           final wallet = snapshot.data!;
 
           return RefreshIndicator(
-            onRefresh: () async => _refreshWallet(),
+            onRefresh: () async {
+              if (!mounted) return;
+              final future = _loadWallet();
+              setState(() {
+                _walletFuture = future; // ← Block body!
+              });
+              await future;
+            },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
@@ -1252,19 +1260,24 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  // ✅ ALL BUTTONS FIXED - NO _refreshWallet() IN .then()
                   Row(
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final result = await Navigator.push(
+                          onPressed: () {
+                            Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => TransactionListScreen(
                                     walletId: wallet.id, userId: widget.userId),
                               ),
-                            );
-                            if (result == true || result == null) _refreshWallet();
+                            ).then((result) {
+                              if ((result == true || result == null) && mounted) {
+                                _refreshWallet(); // ← Just call the method!
+                              }
+                            });
                           },
                           icon: const Icon(Icons.receipt_long),
                           label: const Text('Transactions'),
@@ -1279,15 +1292,18 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final result = await Navigator.push(
+                          onPressed: () {
+                            Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => BudgetListScreen(
                                     walletId: wallet.id, userId: widget.userId),
                               ),
-                            );
-                            if (result == true || result == null) _refreshWallet();
+                            ).then((result) {
+                              if ((result == true || result == null) && mounted) {
+                                _refreshWallet(); // ← Just call the method!
+                              }
+                            });
                           },
                           icon: const Icon(Icons.pie_chart),
                           label: const Text('Budgets'),
@@ -1305,15 +1321,18 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.push(
+                      onPressed: () {
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => RecurringListScreen(
                                 walletId: wallet.id, userId: widget.userId),
                           ),
-                        );
-                        if (result == true || result == null) _refreshWallet();
+                        ).then((result) {
+                          if ((result == true || result == null) && mounted) {
+                            _refreshWallet(); // ← Just call the method!
+                          }
+                        });
                       },
                       icon: const Icon(Icons.repeat),
                       label: const Text('Recurring Transactions'),
@@ -1329,15 +1348,18 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.push(
+                      onPressed: () {
+                        Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => SavingGoalsListScreen(
                                 walletId: wallet.id, userId: widget.userId),
                           ),
-                        );
-                        if (result == true || result == null) _refreshWallet();
+                        ).then((result) {
+                          if ((result == true || result == null) && mounted) {
+                            _refreshWallet(); // ← Just call the method!
+                          }
+                        });
                       },
                       icon: const Icon(Icons.savings),
                       label: const Text('Saving Goals'),
@@ -1372,6 +1394,37 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+
+                  // ✅ TRANSFER BUTTON - THIS WAS LINE 1405!
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TransferScreen(
+                              userId: widget.userId,
+                              fromWalletId: wallet.id,
+                            ),
+                          ),
+                        ).then((result) {
+                          if (result == true && mounted) {
+                            _refreshWallet(); // ← Just call the method!
+                          }
+                        });
+                      },
+                      icon: const Icon(Icons.send),
+                      label: const Text('Transfer Money'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                   _buildInfoCard(wallet),
                   const SizedBox(height: 24),
@@ -1384,7 +1437,12 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       ),
     );
   }
-
+  Future<void> _refreshWalletAsync() async {
+    final future = _loadWallet();
+    if (!mounted) return;
+    setState(() => _walletFuture = future);
+    await future; // Wait for it to complete
+  }
   Widget _buildBalanceCard(WalletModel wallet) {
     Color walletColor;
     IconData walletIcon;
@@ -1554,8 +1612,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
     );
   }
 
-// Replace the _showAddMemberDialog method in WalletDetailsScreen:
-
   void _showAddMemberDialog() {
     showModalBottomSheet(
       context: context,
@@ -1569,26 +1625,17 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                    color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Add Member',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
+              const Text('Add Member',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text(
-                'Choose how to add a new member',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-              ),
+              Text('Choose how to add a new member',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600])),
               const SizedBox(height: 24),
-
-              // Option 1: Scan QR
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: AppConstants.primaryGreen.withOpacity(0.1),
@@ -1598,15 +1645,11 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                 subtitle: const Text('Use camera to scan member\'s QR'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // ✅ Don't use async/await here!
                   Navigator.pop(sheetContext);
-                  _handleQrScan(); // Call separate method
+                  _handleQrScan();
                 },
               ),
-
               const Divider(height: 32),
-
-              // Option 2: Manual Email
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: Colors.blue.withOpacity(0.1),
@@ -1620,7 +1663,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                   if (mounted) _showManualEmailDialog();
                 },
               ),
-
               const SizedBox(height: 16),
             ],
           ),
@@ -1628,31 +1670,26 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       ),
     );
   }
+
   Future<void> _handleQrScan() async {
     if (!mounted) return;
-
     final email = await Navigator.push<String>(
       context,
       MaterialPageRoute(builder: (_) => const QrScannerScreen()),
     );
-
     if (!mounted) return;
-
     if (email != null && email.isNotEmpty) {
       _addMemberController.text = email;
-      _addMember(); // Don't await here either!
+      _addMember();
     }
   }
 
-// ✅ UPDATED - _addMember (don't change this, it's good)
   Future<void> _addMember() async {
     final email = _addMemberController.text.trim();
-
     if (email.isEmpty) {
       if (mounted) _showSnackBar('Please enter an email', Colors.red);
       return;
     }
-
     try {
       if (mounted) {
         showDialog(
@@ -1661,22 +1698,19 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
           builder: (context) => const Center(child: CircularProgressIndicator()),
         );
       }
-
       await _walletService.addMember(widget.walletId, email);
-
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
       _addMemberController.clear();
       _showSnackBar('Member added successfully!', Colors.green);
       _refreshWallet();
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Close loading
+      Navigator.pop(context);
       _showSnackBar('Error: $e', Colors.red);
     }
   }
 
-// Add this new method for manual email entry:
   void _showManualEmailDialog() {
     showDialog(
       context: context,
@@ -1724,8 +1758,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
     );
   }
 
-
-
   void _confirmRemoveMember(WalletMember member) {
     showDialog(
       context: context,
@@ -1740,7 +1772,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
-              if (!mounted) return; // ← ADD THIS
+              if (!mounted) return;
               await _removeMember(member);
             },
             style: ElevatedButton.styleFrom(
@@ -1795,7 +1827,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                         for (var alert in alerts.where((a) => !a.isRead)) {
                           await _alertService.markAsRead(alert.id);
                         }
-                        if (!mounted) return; // ← ADD THIS
+                        if (!mounted) return;
                         Navigator.pop(sheetContext);
                         _loadUnreadAlerts();
                         _refreshWallet();
@@ -1828,7 +1860,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         ),
       ),
     ).then((_) {
-      if (mounted) _loadUnreadAlerts(); // ← ADD MOUNTED CHECK
+      if (mounted) _loadUnreadAlerts();
     });
   }
 
@@ -1861,7 +1893,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       ),
       onDismissed: (direction) async {
         await _alertService.deleteAlert(alert.id);
-        if (!mounted) return; // ← ADD THIS
+        if (!mounted) return;
         _loadUnreadAlerts();
       },
       child: Container(
@@ -1886,7 +1918,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
           onTap: () async {
             if (!alert.isRead) {
               await _alertService.markAsRead(alert.id);
-              if (!mounted) return; // ← ADD THIS
+              if (!mounted) return;
               _loadUnreadAlerts();
               _refreshWallet();
             }
@@ -1937,7 +1969,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
-              if (!mounted) return; // ← ADD THIS
+              if (!mounted) return;
               await _deleteWallet();
             },
             style: ElevatedButton.styleFrom(
