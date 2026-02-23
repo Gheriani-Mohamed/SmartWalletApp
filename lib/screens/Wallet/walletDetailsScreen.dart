@@ -19,6 +19,7 @@ import 'package:smart_wallet_app/screens/Budget/budgetListScreen.dart';
 import 'package:smart_wallet_app/screens/ReccuringTransactions/reccuringListScreen.dart';
 import 'package:smart_wallet_app/screens/saving_Goals/saving_goal_list_screen.dart';
 import 'package:smart_wallet_app/screens/Analytics/AnalyticScrenn.dart';
+import 'package:smart_wallet_app/screens/Login//qrScannerScreen.dart';
 
 class WalletDetailsScreen extends StatefulWidget {
   final String walletId;
@@ -44,10 +45,12 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   final _addMemberController = TextEditingController();
   int _unreadAlertsCount = 0;
+  late Future<WalletModel> _walletFuture;
 
   @override
   void initState() {
     super.initState();
+    _walletFuture = _loadWallet();
     _loadUnreadAlerts();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndGenerateRecurring();
@@ -62,6 +65,17 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
     super.dispose();
   }
 
+  void _refreshWallet() {
+    if (!mounted) return;
+    setState(() {
+      _walletFuture = _loadWallet();
+    });
+  }
+
+  Future<WalletModel> _loadWallet() async {
+    return await _walletService.getWalletById(widget.walletId);
+  }
+
   Future<void> _loadUnreadAlerts() async {
     try {
       final alerts = await _alertService.getUserAlerts(widget.userId);
@@ -72,7 +86,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       if (mounted) print('Error loading alerts: $e');
     }
   }
-
 
   Future<void> _checkAndGenerateRecurring() async {
     try {
@@ -92,15 +105,12 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                 Icon(Icons.repeat, color: Colors.orange[700], size: 20),
                 const SizedBox(width: 8),
                 const Expanded(
-                  child: Text(
-                    'Recurring Transactions',
-                    style: TextStyle(fontSize: 16),
-                  ),
+                  child: Text('Recurring Transactions', style: TextStyle(fontSize: 16)),
                 ),
               ],
             ),
             content: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 300), // Fixed height constraint
+              constraints: const BoxConstraints(maxHeight: 300),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -118,11 +128,8 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Icon(
-                              Icons.circle,
-                              size: 6,
-                              color: r.type == 'income' ? Colors.green : Colors.red,
-                            ),
+                            child: Icon(Icons.circle, size: 6,
+                                color: r.type == 'income' ? Colors.green : Colors.red),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
@@ -137,16 +144,11 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                     if (overdueCount > 5)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          'and ${overdueCount - 5} more...',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                        ),
+                        child: Text('and ${overdueCount - 5} more...',
+                            style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                       ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Generate them now?',
-                      style: TextStyle(fontSize: 13),
-                    ),
+                    const Text('Generate them now?', style: TextStyle(fontSize: 13)),
                   ],
                 ),
               ),
@@ -186,7 +188,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
               backgroundColor: Colors.green,
               duration: const Duration(seconds: 3),
             ));
-            if (mounted) setState(() {});
+            if (mounted) _refreshWallet();
           } catch (e) {
             if (!mounted) return;
             Navigator.pop(context);
@@ -257,7 +259,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       final picked = await _imagePicker.pickImage(source: source, imageQuality: 90);
       if (picked == null) return;
 
-      // Show scanning loader
       if (!mounted) return;
       showDialog(
         context: context,
@@ -282,12 +283,12 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       final receiptData = await _receiptScanner.scanReceipt(File(picked.path));
 
       if (!mounted) return;
-      Navigator.pop(context); // close loader
+      Navigator.pop(context);
 
       _showReceiptConfirmSheet(receiptData, File(picked.path));
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // close loader if open
+      Navigator.pop(context);
       _showSnackBar('Could not scan receipt: $e', Colors.red);
     }
   }
@@ -309,7 +310,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            // Fetch categories once when sheet opens
             if (loadingCategories) {
               CategoryService().getCategoriesByType('expense').then((cats) {
                 setSheetState(() {
@@ -322,9 +322,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
             }
 
             return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
               child: DraggableScrollableSheet(
                 initialChildSize: 0.85,
                 minChildSize: 0.5,
@@ -332,7 +330,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                 expand: false,
                 builder: (_, scrollCtrl) => Column(
                   children: [
-                    // Handle
                     const SizedBox(height: 12),
                     Container(
                       width: 40, height: 4,
@@ -341,8 +338,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                           borderRadius: BorderRadius.circular(2)),
                     ),
                     const SizedBox(height: 16),
-
-                    // Header
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
@@ -360,49 +355,39 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                       ),
                     ),
                     const Divider(),
-
                     Expanded(
                       child: ListView(
                         controller: scrollCtrl,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         children: [
-                          // Thumbnail
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.file(imageFile,
                                 height: 140, width: double.infinity, fit: BoxFit.cover),
                           ),
                           const SizedBox(height: 20),
-
-                          // Amount field
                           TextField(
                             controller: amountCtrl,
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             decoration: InputDecoration(
                               labelText: 'Amount',
                               prefixText: '\$ ',
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               filled: true,
                               fillColor: Colors.grey[50],
                             ),
                           ),
                           const SizedBox(height: 12),
-
-                          // Description field
                           TextField(
                             controller: descCtrl,
                             decoration: InputDecoration(
                               labelText: 'Description / Merchant',
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               filled: true,
                               fillColor: Colors.grey[50],
                             ),
                           ),
                           const SizedBox(height: 12),
-
-                          // Date picker
                           InkWell(
                             onTap: () async {
                               final picked = await showDatePicker(
@@ -411,14 +396,11 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                 firstDate: DateTime(2000),
                                 lastDate: DateTime.now(),
                               );
-                              if (picked != null) {
-                                setSheetState(() => selectedDate = picked);
-                              }
+                              if (picked != null) setSheetState(() => selectedDate = picked);
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 16),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.grey.shade400),
                                 borderRadius: BorderRadius.circular(12),
@@ -426,13 +408,10 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.calendar_today,
-                                      size: 18, color: Colors.grey[600]),
+                                  Icon(Icons.calendar_today, size: 18, color: Colors.grey[600]),
                                   const SizedBox(width: 10),
                                   Text(
-                                    '${selectedDate.day.toString().padLeft(2, '0')}/'
-                                        '${selectedDate.month.toString().padLeft(2, '0')}/'
-                                        '${selectedDate.year}',
+                                    '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}',
                                     style: const TextStyle(fontSize: 15),
                                   ),
                                   const Spacer(),
@@ -442,8 +421,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-
-                          // ── Category Selector ──────────────────────────
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -452,22 +429,18 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                   Icon(Icons.category, size: 16, color: Colors.grey[600]),
                                   const SizedBox(width: 6),
                                   Text('Category',
-                                      style: TextStyle(
-                                          fontSize: 13,
+                                      style: TextStyle(fontSize: 13,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.grey[700])),
                                   if (selectedCategory == null) ...[
                                     const SizedBox(width: 6),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: Colors.red[50],
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
+                                          color: Colors.red[50],
+                                          borderRadius: BorderRadius.circular(4)),
                                       child: Text('Required',
-                                          style: TextStyle(
-                                              fontSize: 10,
+                                          style: TextStyle(fontSize: 10,
                                               color: Colors.red[400],
                                               fontWeight: FontWeight.w500)),
                                     ),
@@ -479,10 +452,8 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                 const Center(
                                   child: Padding(
                                     padding: EdgeInsets.symmetric(vertical: 12),
-                                    child: SizedBox(
-                                      width: 20, height: 20,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
-                                    ),
+                                    child: SizedBox(width: 20, height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2)),
                                   ),
                                 )
                               else if (categories.isEmpty)
@@ -495,8 +466,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                   ),
                                   child: Row(
                                     children: [
-                                      Icon(Icons.warning_amber,
-                                          color: Colors.orange[700], size: 18),
+                                      Icon(Icons.warning_amber, color: Colors.orange[700], size: 18),
                                       const SizedBox(width: 8),
                                       const Expanded(
                                         child: Text('No categories found. Please create one first.',
@@ -520,9 +490,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 12, vertical: 8),
                                         decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? color.withOpacity(0.15)
-                                              : Colors.grey[100],
+                                          color: isSelected ? color.withOpacity(0.15) : Colors.grey[100],
                                           borderRadius: BorderRadius.circular(20),
                                           border: Border.all(
                                             color: isSelected ? color : Colors.grey.shade300,
@@ -532,26 +500,18 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(
-                                              _iconFromName(cat.iconName),
-                                              size: 16,
-                                              color: isSelected ? color : Colors.grey[600],
-                                            ),
+                                            Icon(_iconFromName(cat.iconName), size: 16,
+                                                color: isSelected ? color : Colors.grey[600]),
                                             const SizedBox(width: 6),
-                                            Text(
-                                              cat.name,
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: isSelected
-                                                    ? FontWeight.bold
-                                                    : FontWeight.normal,
-                                                color: isSelected ? color : Colors.black87,
-                                              ),
-                                            ),
+                                            Text(cat.name,
+                                                style: TextStyle(fontSize: 13,
+                                                    fontWeight: isSelected
+                                                        ? FontWeight.bold
+                                                        : FontWeight.normal,
+                                                    color: isSelected ? color : Colors.black87)),
                                             if (isSelected) ...[
                                               const SizedBox(width: 4),
-                                              Icon(Icons.check_circle,
-                                                  size: 14, color: color),
+                                              Icon(Icons.check_circle, size: 14, color: color),
                                             ],
                                           ],
                                         ),
@@ -561,14 +521,10 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                 ),
                             ],
                           ),
-                          // ───────────────────────────────────────────────
-
-                          // Detected line items (read-only summary)
                           if (data.lineItems.isNotEmpty) ...[
                             const SizedBox(height: 20),
                             Text('Detected Items (${data.lineItems.length})',
-                                style: TextStyle(
-                                    fontSize: 13,
+                                style: TextStyle(fontSize: 13,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.grey[700])),
                             const SizedBox(height: 8),
@@ -582,20 +538,16 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                 children: data.lineItems.take(5).map((item) => ListTile(
                                   dense: true,
                                   leading: const Icon(Icons.circle, size: 6, color: Colors.grey),
-                                  title: Text(item.name,
-                                      style: const TextStyle(fontSize: 13)),
+                                  title: Text(item.name, style: const TextStyle(fontSize: 13)),
                                   trailing: item.amount != null
                                       ? Text('\$${item.amount!.toStringAsFixed(2)}',
-                                      style: const TextStyle(
-                                          fontSize: 13, fontWeight: FontWeight.w500))
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))
                                       : null,
                                 )).toList(),
                               ),
                             ),
                           ],
                           const SizedBox(height: 24),
-
-                          // Save button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
@@ -603,25 +555,19 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                 final amount = double.tryParse(amountCtrl.text);
                                 if (amount == null || amount <= 0) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Please enter a valid amount'),
-                                      backgroundColor: Colors.red,
-                                    ),
+                                    const SnackBar(content: Text('Please enter a valid amount'),
+                                        backgroundColor: Colors.red),
                                   );
                                   return;
                                 }
                                 if (selectedCategory == null) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Please select a category'),
-                                      backgroundColor: Colors.red,
-                                    ),
+                                    const SnackBar(content: Text('Please select a category'),
+                                        backgroundColor: Colors.red),
                                   );
                                   return;
                                 }
-
-                                Navigator.pop(context); // close sheet
-
+                                Navigator.pop(context);
                                 try {
                                   await _transactionService.createTransaction(
                                     userId: widget.userId,
@@ -634,26 +580,23 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                         : descCtrl.text.trim(),
                                     date: selectedDate,
                                   );
-
                                   if (!mounted) return;
                                   _showSnackBar('Transaction saved successfully!', Colors.green);
-                                  setState(() {});
+                                  _refreshWallet();
                                 } catch (e) {
                                   if (!mounted) return;
                                   _showSnackBar('Failed to save: $e', Colors.red);
                                 }
                               },
                               icon: const Icon(Icons.check),
-                              label: const Text('Save as Transaction',
-                                  style: TextStyle(fontSize: 15)),
+                              label: const Text('Save as Transaction', style: TextStyle(fontSize: 15)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: selectedCategory != null
                                     ? AppConstants.primaryGreen
                                     : Colors.grey,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
                           ),
@@ -712,7 +655,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       return;
     }
 
-    // Fetch both expense and income categories
     List<CategoryModel> categories = [];
     try {
       final expense = await CategoryService().getCategoriesByType('expense');
@@ -764,30 +706,24 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
             }
 
             return Padding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Handle
                     Container(
                       width: 40, height: 4,
                       decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2)),
+                          color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
                     ),
                     const SizedBox(height: 20),
-
-                    // Title
                     Row(
                       children: [
                         const Icon(Icons.mic, color: AppConstants.primaryGreen),
                         const SizedBox(width: 8),
                         const Text('Voice Transaction',
-                            style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold)),
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         const Spacer(),
                         IconButton(
                           icon: const Icon(Icons.close),
@@ -799,16 +735,12 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-
-                    // Hint text
                     if (!isDone)
                       Text(
                         'Try: "Add \$12 to Food for McDonald\'s"',
                         style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                       ),
                     const SizedBox(height: 24),
-
-                    // Mic button with pulse
                     GestureDetector(
                       onTap: isListening
                           ? () async {
@@ -822,104 +754,69 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                         height: isListening ? 90 : 72,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: isListening
-                              ? Colors.red
-                              : AppConstants.primaryGreen,
+                          color: isListening ? Colors.red : AppConstants.primaryGreen,
                           boxShadow: isListening
-                              ? [
-                            BoxShadow(
-                                color: Colors.red.withOpacity(0.4),
-                                blurRadius: 20,
-                                spreadRadius: 5),
-                          ]
-                              : [
-                            BoxShadow(
-                                color: AppConstants.primaryGreen
-                                    .withOpacity(0.3),
-                                blurRadius: 12,
-                                spreadRadius: 2),
-                          ],
+                              ? [BoxShadow(color: Colors.red.withOpacity(0.4),
+                              blurRadius: 20, spreadRadius: 5)]
+                              : [BoxShadow(color: AppConstants.primaryGreen.withOpacity(0.3),
+                              blurRadius: 12, spreadRadius: 2)],
                         ),
-                        child: Icon(
-                          isListening ? Icons.stop : Icons.mic,
-                          color: Colors.white,
-                          size: 32,
-                        ),
+                        child: Icon(isListening ? Icons.stop : Icons.mic,
+                            color: Colors.white, size: 32),
                       ),
                     ),
                     const SizedBox(height: 16),
-
-                    // Status text
                     Text(
-                      isListening
-                          ? 'Listening... tap to stop'
-                          : isDone
-                          ? 'Done! Review below'
-                          : 'Tap to speak',
+                      isListening ? 'Listening... tap to stop'
+                          : isDone ? 'Done! Review below' : 'Tap to speak',
                       style: TextStyle(
                         fontSize: 13,
                         color: isListening ? Colors.red : Colors.grey[600],
-                        fontWeight: isListening
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                        fontWeight: isListening ? FontWeight.w600 : FontWeight.normal,
                       ),
                     ),
-
-                    // Live transcript
                     if (liveText.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '"$liveText"',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 14,
-                              fontStyle: FontStyle.italic,
-                              color: Colors.grey[700]),
-                        ),
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12)),
+                        child: Text('"$liveText"',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14,
+                                fontStyle: FontStyle.italic, color: Colors.grey[700])),
                       ),
                     ],
-
-                    // Parsed result preview
                     if (isDone && result != null) ...[
                       const SizedBox(height: 20),
                       const Divider(),
                       const SizedBox(height: 12),
                       _buildParsedResultCard(result!),
                       const SizedBox(height: 16),
-
                       Row(
                         children: [
-                          // Retry
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: startListening,
                               icon: const Icon(Icons.refresh),
                               label: const Text('Retry'),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // Confirm
                           Expanded(
                             flex: 2,
                             child: ElevatedButton.icon(
                               onPressed: result!.isUsable
                                   ? () {
                                 Navigator.pop(context);
-                                _showVoiceConfirmSheet(
-                                    result!, categories);
+                                _showVoiceConfirmSheet(result!, categories);
                               }
                                   : null,
                               icon: const Icon(Icons.arrow_forward),
@@ -927,8 +824,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppConstants.primaryGreen,
                                 foregroundColor: Colors.white,
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12)),
                               ),
@@ -955,28 +851,22 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         color: result.isUsable ? Colors.green[50] : Colors.orange[50],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: result.isUsable
-              ? Colors.green.shade200
-              : Colors.orange.shade200,
+          color: result.isUsable ? Colors.green.shade200 : Colors.orange.shade200,
         ),
       ),
       child: Column(
         children: [
           _parsedRow(Icons.attach_money, 'Amount',
-              result.amount != null
-                  ? '\$${result.amount!.toStringAsFixed(2)}'
-                  : '❌ Not detected',
+              result.amount != null ? '\$${result.amount!.toStringAsFixed(2)}' : '❌ Not detected',
               result.amount != null),
           const SizedBox(height: 8),
           _parsedRow(Icons.category, 'Category',
               result.matchedCategory?.name ?? '⚠️ Not matched — select below',
               result.matchedCategory != null),
           const SizedBox(height: 8),
-          _parsedRow(Icons.notes, 'Description',
-              result.description ?? '—', result.description != null),
+          _parsedRow(Icons.notes, 'Description', result.description ?? '—', result.description != null),
           const SizedBox(height: 8),
-          _parsedRow(Icons.swap_vert, 'Type',
-              result.type ?? 'expense', true),
+          _parsedRow(Icons.swap_vert, 'Type', result.type ?? 'expense', true),
         ],
       ),
     );
@@ -990,20 +880,16 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         Text('$label: ', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
         Expanded(
           child: Text(value,
-              style: TextStyle(
-                  fontSize: 13,
+              style: TextStyle(fontSize: 13,
                   color: ok ? Colors.black87 : Colors.orange[800])),
         ),
       ],
     );
   }
 
-  void _showVoiceConfirmSheet(
-      VoiceTransactionResult voiceResult, List<CategoryModel> categories) {
-    final amountCtrl = TextEditingController(
-        text: voiceResult.amount?.toStringAsFixed(2) ?? '');
-    final descCtrl =
-    TextEditingController(text: voiceResult.description ?? '');
+  void _showVoiceConfirmSheet(VoiceTransactionResult voiceResult, List<CategoryModel> categories) {
+    final amountCtrl = TextEditingController(text: voiceResult.amount?.toStringAsFixed(2) ?? '');
+    final descCtrl = TextEditingController(text: voiceResult.description ?? '');
     DateTime selectedDate = DateTime.now();
     CategoryModel? selectedCategory = voiceResult.matchedCategory;
     String selectedType = voiceResult.type ?? 'expense';
@@ -1017,8 +903,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Padding(
-              padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
               child: DraggableScrollableSheet(
                 initialChildSize: 0.85,
                 minChildSize: 0.5,
@@ -1030,25 +915,19 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                     Container(
                       width: 40, height: 4,
                       decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(2)),
+                          color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
                     ),
                     const SizedBox(height: 16),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
                         children: [
-                          const Icon(Icons.mic,
-                              color: AppConstants.primaryGreen),
+                          const Icon(Icons.mic, color: AppConstants.primaryGreen),
                           const SizedBox(width: 10),
                           const Text('Confirm Transaction',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                           const Spacer(),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
+                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                         ],
                       ),
                     ),
@@ -1059,45 +938,32 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         children: [
                           const SizedBox(height: 8),
-
-                          // Type toggle
                           Container(
                             decoration: BoxDecoration(
-                              color: Colors.grey[100],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                                color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
                             child: Row(
                               children: ['expense', 'income'].map((t) {
                                 final selected = selectedType == t;
                                 return Expanded(
                                   child: GestureDetector(
-                                    onTap: () =>
-                                        setSheetState(() => selectedType = t),
+                                    onTap: () => setSheetState(() => selectedType = t),
                                     child: AnimatedContainer(
-                                      duration:
-                                      const Duration(milliseconds: 150),
+                                      duration: const Duration(milliseconds: 150),
                                       margin: const EdgeInsets.all(4),
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 10),
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
                                         color: selected
-                                            ? (t == 'expense'
-                                            ? Colors.red
-                                            : Colors.green)
+                                            ? (t == 'expense' ? Colors.red : Colors.green)
                                             : Colors.transparent,
-                                        borderRadius:
-                                        BorderRadius.circular(10),
+                                        borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(
                                         t[0].toUpperCase() + t.substring(1),
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                          color: selected
-                                              ? Colors.white
-                                              : Colors.grey[600],
-                                        ),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: selected ? Colors.white : Colors.grey[600]),
                                       ),
                                     ),
                                   ),
@@ -1106,37 +972,28 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                             ),
                           ),
                           const SizedBox(height: 16),
-
-                          // Amount
                           TextField(
                             controller: amountCtrl,
-                            keyboardType: const TextInputType.numberWithOptions(
-                                decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             decoration: InputDecoration(
                               labelText: 'Amount',
                               prefixText: '\$ ',
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               filled: true,
                               fillColor: Colors.grey[50],
                             ),
                           ),
                           const SizedBox(height: 12),
-
-                          // Description
                           TextField(
                             controller: descCtrl,
                             decoration: InputDecoration(
                               labelText: 'Description',
-                              border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               filled: true,
                               fillColor: Colors.grey[50],
                             ),
                           ),
                           const SizedBox(height: 12),
-
-                          // Date picker
                           InkWell(
                             onTap: () async {
                               final picked = await showDatePicker(
@@ -1145,64 +1002,47 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                                 firstDate: DateTime(2000),
                                 lastDate: DateTime.now(),
                               );
-                              if (picked != null) {
-                                setSheetState(() => selectedDate = picked);
-                              }
+                              if (picked != null) setSheetState(() => selectedDate = picked);
                             },
                             borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 16),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
                               decoration: BoxDecoration(
-                                border:
-                                Border.all(color: Colors.grey.shade400),
+                                border: Border.all(color: Colors.grey.shade400),
                                 borderRadius: BorderRadius.circular(12),
                                 color: Colors.grey[50],
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.calendar_today,
-                                      size: 18, color: Colors.grey[600]),
+                                  Icon(Icons.calendar_today, size: 18, color: Colors.grey[600]),
                                   const SizedBox(width: 10),
                                   Text(
-                                    '${selectedDate.day.toString().padLeft(2, '0')}/'
-                                        '${selectedDate.month.toString().padLeft(2, '0')}/'
-                                        '${selectedDate.year}',
+                                    '${selectedDate.day.toString().padLeft(2, '0')}/${selectedDate.month.toString().padLeft(2, '0')}/${selectedDate.year}',
                                     style: const TextStyle(fontSize: 15),
                                   ),
                                   const Spacer(),
-                                  Icon(Icons.arrow_drop_down,
-                                      color: Colors.grey[600]),
+                                  Icon(Icons.arrow_drop_down, color: Colors.grey[600]),
                                 ],
                               ),
                             ),
                           ),
                           const SizedBox(height: 16),
-
-                          // Category chips
                           Row(
                             children: [
-                              Icon(Icons.category,
-                                  size: 16, color: Colors.grey[600]),
+                              Icon(Icons.category, size: 16, color: Colors.grey[600]),
                               const SizedBox(width: 6),
                               Text('Category',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey[700])),
+                                  style: TextStyle(fontSize: 13,
+                                      fontWeight: FontWeight.w600, color: Colors.grey[700])),
                               if (selectedCategory == null) ...[
                                 const SizedBox(width: 6),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                      color: Colors.red[50],
-                                      borderRadius: BorderRadius.circular(4)),
+                                      color: Colors.red[50], borderRadius: BorderRadius.circular(4)),
                                   child: Text('Required',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.red[400],
-                                          fontWeight: FontWeight.w500)),
+                                      style: TextStyle(fontSize: 10,
+                                          color: Colors.red[400], fontWeight: FontWeight.w500)),
                                 ),
                               ],
                             ],
@@ -1212,51 +1052,35 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                             spacing: 8,
                             runSpacing: 8,
                             children: categories.map((cat) {
-                              final isSelected =
-                                  selectedCategory?.id == cat.id;
+                              final isSelected = selectedCategory?.id == cat.id;
                               final color = cat.color;
                               return GestureDetector(
-                                onTap: () => setSheetState(() =>
-                                selectedCategory =
-                                isSelected ? null : cat),
+                                onTap: () => setSheetState(
+                                        () => selectedCategory = isSelected ? null : cat),
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 150),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? color.withOpacity(0.15)
-                                        : Colors.grey[100],
+                                    color: isSelected ? color.withOpacity(0.15) : Colors.grey[100],
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
-                                      color: isSelected
-                                          ? color
-                                          : Colors.grey.shade300,
-                                      width: isSelected ? 2 : 1,
-                                    ),
+                                        color: isSelected ? color : Colors.grey.shade300,
+                                        width: isSelected ? 2 : 1),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(_iconFromName(cat.iconName),
-                                          size: 16,
-                                          color: isSelected
-                                              ? color
-                                              : Colors.grey[600]),
+                                      Icon(_iconFromName(cat.iconName), size: 16,
+                                          color: isSelected ? color : Colors.grey[600]),
                                       const SizedBox(width: 6),
                                       Text(cat.name,
-                                          style: TextStyle(
-                                              fontSize: 13,
+                                          style: TextStyle(fontSize: 13,
                                               fontWeight: isSelected
-                                                  ? FontWeight.bold
-                                                  : FontWeight.normal,
-                                              color: isSelected
-                                                  ? color
-                                                  : Colors.black87)),
+                                                  ? FontWeight.bold : FontWeight.normal,
+                                              color: isSelected ? color : Colors.black87)),
                                       if (isSelected) ...[
                                         const SizedBox(width: 4),
-                                        Icon(Icons.check_circle,
-                                            size: 14, color: color),
+                                        Icon(Icons.check_circle, size: 14, color: color),
                                       ],
                                     ],
                                   ),
@@ -1265,63 +1089,48 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                             }).toList(),
                           ),
                           const SizedBox(height: 24),
-
-                          // Save button
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               onPressed: selectedCategory != null
                                   ? () async {
-                                final amount =
-                                double.tryParse(amountCtrl.text);
+                                final amount = double.tryParse(amountCtrl.text);
                                 if (amount == null || amount <= 0) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(const SnackBar(
-                                    content: Text(
-                                        'Please enter a valid amount'),
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                    content: Text('Please enter a valid amount'),
                                     backgroundColor: Colors.red,
                                   ));
                                   return;
                                 }
                                 Navigator.pop(context);
                                 try {
-                                  await _transactionService
-                                      .createTransaction(
+                                  await _transactionService.createTransaction(
                                     userId: widget.userId,
                                     walletId: widget.walletId,
                                     categoryId: selectedCategory!.id,
                                     amount: amount,
                                     type: selectedType,
-                                    description: descCtrl.text
-                                        .trim()
-                                        .isEmpty
-                                        ? null
-                                        : descCtrl.text.trim(),
+                                    description: descCtrl.text.trim().isEmpty
+                                        ? null : descCtrl.text.trim(),
                                     date: selectedDate,
                                   );
                                   if (!mounted) return;
-                                  _showSnackBar(
-                                      'Transaction saved!', Colors.green);
-                                  if (mounted) setState(() {});
+                                  _showSnackBar('Transaction saved!', Colors.green);
+                                  _refreshWallet();
                                 } catch (e) {
                                   if (!mounted) return;
-                                  _showSnackBar(
-                                      'Failed to save: $e', Colors.red);
+                                  _showSnackBar('Failed to save: $e', Colors.red);
                                 }
                               }
                                   : null,
                               icon: const Icon(Icons.check),
-                              label: const Text('Save Transaction',
-                                  style: TextStyle(fontSize: 15)),
+                              label: const Text('Save Transaction', style: TextStyle(fontSize: 15)),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: selectedCategory != null
-                                    ? AppConstants.primaryGreen
-                                    : Colors.grey,
+                                    ? AppConstants.primaryGreen : Colors.grey,
                                 foregroundColor: Colors.white,
-                                padding:
-                                const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
                             ),
                           ),
@@ -1359,15 +1168,11 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                   top: 8,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                        color: Colors.red, shape: BoxShape.circle),
-                    constraints:
-                    const BoxConstraints(minWidth: 16, minHeight: 16),
+                    decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                     child: Text(
                       _unreadAlertsCount > 9 ? '9+' : '$_unreadAlertsCount',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
+                      style: const TextStyle(color: Colors.white, fontSize: 10,
                           fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
@@ -1375,15 +1180,12 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                 ),
             ],
           ),
-          IconButton(
-              icon: const Icon(Icons.edit), onPressed: () => _showEditDialog()),
-          IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () => _confirmDelete()),
+          IconButton(icon: const Icon(Icons.edit), onPressed: () => _showEditDialog()),
+          IconButton(icon: const Icon(Icons.delete), onPressed: () => _confirmDelete()),
         ],
       ),
       body: FutureBuilder<WalletModel>(
-        future: _loadWallet(),
+        future: _walletFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -1398,7 +1200,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                   const SizedBox(height: 16),
                   Text('Error: ${snapshot.error}'),
                   ElevatedButton(
-                    onPressed: () => setState(() {}),
+                    onPressed: _refreshWallet,
                     child: const Text('Retry'),
                   ),
                 ],
@@ -1409,7 +1211,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
           final wallet = snapshot.data!;
 
           return RefreshIndicator(
-            onRefresh: () async => setState(() {}),
+            onRefresh: () async => _refreshWallet(),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
@@ -1418,8 +1220,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                 children: [
                   _buildBalanceCard(wallet),
                   const SizedBox(height: 16),
-
-                  // ── Quick Entry Buttons ──────────────────────────────────
                   Row(
                     children: [
                       Expanded(
@@ -1429,11 +1229,9 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                           label: const Text('Scan Receipt'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppConstants.primaryGreen,
-                            side: const BorderSide(
-                                color: AppConstants.primaryGreen, width: 1.5),
+                            side: const BorderSide(color: AppConstants.primaryGreen, width: 1.5),
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -1445,18 +1243,15 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                           label: const Text('Voice Entry'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.deepPurple,
-                            side: const BorderSide(
-                                color: Colors.deepPurple, width: 1.5),
+                            side: const BorderSide(color: Colors.deepPurple, width: 1.5),
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  // ────────────────────────────────────────────────────────
-
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -1466,12 +1261,10 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => TransactionListScreen(
-                                  walletId: wallet.id,
-                                  userId: widget.userId,
-                                ),
+                                    walletId: wallet.id, userId: widget.userId),
                               ),
                             );
-                            if (result == true || result == null) setState(() {});
+                            if (result == true || result == null) _refreshWallet();
                           },
                           icon: const Icon(Icons.receipt_long),
                           label: const Text('Transactions'),
@@ -1479,8 +1272,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                             backgroundColor: AppConstants.primaryGreen,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -1492,12 +1284,10 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) => BudgetListScreen(
-                                  walletId: wallet.id,
-                                  userId: widget.userId,
-                                ),
+                                    walletId: wallet.id, userId: widget.userId),
                               ),
                             );
-                            if (result == true || result == null) setState(() {});
+                            if (result == true || result == null) _refreshWallet();
                           },
                           icon: const Icon(Icons.pie_chart),
                           label: const Text('Budgets'),
@@ -1505,8 +1295,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                             backgroundColor: Colors.blue,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
                       ),
@@ -1521,12 +1310,10 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => RecurringListScreen(
-                              walletId: wallet.id,
-                              userId: widget.userId,
-                            ),
+                                walletId: wallet.id, userId: widget.userId),
                           ),
                         );
-                        if (result == true || result == null) setState(() {});
+                        if (result == true || result == null) _refreshWallet();
                       },
                       icon: const Icon(Icons.repeat),
                       label: const Text('Recurring Transactions'),
@@ -1534,8 +1321,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                         backgroundColor: Colors.purple,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -1548,12 +1334,10 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => SavingGoalsListScreen(
-                              walletId: wallet.id,
-                              userId: widget.userId,
-                            ),
+                                walletId: wallet.id, userId: widget.userId),
                           ),
                         );
-                        if (result == true || result == null) setState(() {});
+                        if (result == true || result == null) _refreshWallet();
                       },
                       icon: const Icon(Icons.savings),
                       label: const Text('Saving Goals'),
@@ -1561,8 +1345,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                         backgroundColor: Colors.amber[700],
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -1575,9 +1358,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => AnalyticsScreen(
-                              walletId: wallet.id,
-                              userId: widget.userId,
-                            ),
+                                walletId: wallet.id, userId: widget.userId),
                           ),
                         );
                       },
@@ -1587,16 +1368,13 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                         backgroundColor: Colors.deepPurple,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
                   const SizedBox(height: 24),
-
                   _buildInfoCard(wallet),
                   const SizedBox(height: 24),
-
                   if (wallet.type != "personal") _buildMembersSection(wallet),
                 ],
               ),
@@ -1605,10 +1383,6 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         },
       ),
     );
-  }
-
-  Future<WalletModel> _loadWallet() async {
-    return await _walletService.getWalletById(widget.walletId);
   }
 
   Widget _buildBalanceCard(WalletModel wallet) {
@@ -1640,11 +1414,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: walletColor.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
+          BoxShadow(color: walletColor.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -1655,33 +1425,21 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
               Icon(walletIcon, color: Colors.white, size: 32),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  wallet.name,
-                  style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
-                ),
+                child: Text(wallet.name,
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold,
+                        color: Colors.white)),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            wallet.type.toUpperCase(),
-            style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.8),
-                letterSpacing: 1.2),
-          ),
+          Text(wallet.type.toUpperCase(),
+              style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8),
+                  letterSpacing: 1.2)),
           const SizedBox(height: 24),
-          const Text('Current Balance',
-              style: TextStyle(fontSize: 14, color: Colors.white70)),
+          const Text('Current Balance', style: TextStyle(fontSize: 14, color: Colors.white70)),
           const SizedBox(height: 8),
-          Text(
-            '${wallet.currency} ${wallet.balance.toStringAsFixed(2)}',
-            style: const TextStyle(
-                fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
+          Text('${wallet.currency} ${wallet.balance.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white)),
         ],
       ),
     );
@@ -1717,12 +1475,8 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       children: [
         Icon(icon, color: Colors.grey[600], size: 20),
         const SizedBox(width: 12),
-        Expanded(
-          child: Text(label,
-              style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-        ),
-        Text(value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+        Expanded(child: Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600]))),
+        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -1734,8 +1488,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Members',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text('Members', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextButton.icon(
               onPressed: () => _showAddMemberDialog(),
               icon: const Icon(Icons.person_add),
@@ -1746,12 +1499,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
         ),
         const SizedBox(height: 12),
         if (wallet.members.isEmpty)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: Text('No members yet'),
-            ),
-          )
+          const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('No members yet')))
         else
           ...wallet.members.map((member) => _buildMemberCard(member, wallet)),
       ],
@@ -1778,15 +1526,11 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
             ),
             if (isCurrentUser)
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    borderRadius: BorderRadius.circular(12)),
+                    color: Colors.green[50], borderRadius: BorderRadius.circular(12)),
                 child: const Text('You',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.green,
+                    style: TextStyle(fontSize: 12, color: Colors.green,
                         fontWeight: FontWeight.bold)),
               ),
           ],
@@ -1810,15 +1554,138 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
     );
   }
 
+// Replace the _showAddMemberDialog method in WalletDetailsScreen:
+
   void _showAddMemberDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Add Member',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Choose how to add a new member',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 24),
+
+              // Option 1: Scan QR
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppConstants.primaryGreen.withOpacity(0.1),
+                  child: const Icon(Icons.qr_code_scanner, color: AppConstants.primaryGreen),
+                ),
+                title: const Text('Scan QR Code', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Use camera to scan member\'s QR'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  // ✅ Don't use async/await here!
+                  Navigator.pop(sheetContext);
+                  _handleQrScan(); // Call separate method
+                },
+              ),
+
+              const Divider(height: 32),
+
+              // Option 2: Manual Email
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Colors.blue.withOpacity(0.1),
+                  child: const Icon(Icons.email, color: Colors.blue),
+                ),
+                title: const Text('Enter Email', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Type email address manually'),
+                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  if (mounted) _showManualEmailDialog();
+                },
+              ),
+
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  Future<void> _handleQrScan() async {
+    if (!mounted) return;
+
+    final email = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+    );
+
+    if (!mounted) return;
+
+    if (email != null && email.isNotEmpty) {
+      _addMemberController.text = email;
+      _addMember(); // Don't await here either!
+    }
+  }
+
+// ✅ UPDATED - _addMember (don't change this, it's good)
+  Future<void> _addMember() async {
+    final email = _addMemberController.text.trim();
+
+    if (email.isEmpty) {
+      if (mounted) _showSnackBar('Please enter an email', Colors.red);
+      return;
+    }
+
+    try {
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(child: CircularProgressIndicator()),
+        );
+      }
+
+      await _walletService.addMember(widget.walletId, email);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+      _addMemberController.clear();
+      _showSnackBar('Member added successfully!', Colors.green);
+      _refreshWallet();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+      _showSnackBar('Error: $e', Colors.red);
+    }
+  }
+
+// Add this new method for manual email entry:
+  void _showManualEmailDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Member'),
+        title: const Text('Add Member by Email'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Enter the email address of the person you want to add:'),
+            const Text('Enter the email address:'),
             const SizedBox(height: 16),
             TextField(
               controller: _addMemberController,
@@ -1826,8 +1693,10 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                 labelText: 'Email',
                 hintText: 'example@email.com',
                 border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.email),
               ),
               keyboardType: TextInputType.emailAddress,
+              autofocus: true,
             ),
           ],
         ),
@@ -1855,38 +1724,23 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
     );
   }
 
-  Future<void> _addMember() async {
-    final email = _addMemberController.text.trim();
-    if (email.isEmpty) {
-      _showSnackBar('Please enter an email', Colors.red);
-      return;
-    }
-    try {
-      await _walletService.addMember(widget.walletId, email);
-      if (!mounted) return;
-      _addMemberController.clear();
-      _showSnackBar('Member added successfully!', Colors.green);
-      if (mounted) setState(() {});
-    } catch (e) {
-      if (!mounted) return;
-      _showSnackBar('Error: $e', Colors.red);
-    }
-  }
+
 
   void _confirmRemoveMember(WalletMember member) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Remove Member'),
         content: Text('Remove ${member.user.name} from this wallet?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.of(dialogContext).pop();
+              if (!mounted) return; // ← ADD THIS
               await _removeMember(member);
             },
             style: ElevatedButton.styleFrom(
@@ -1905,7 +1759,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       await _walletService.removeMember(widget.walletId, member.userId);
       if (!mounted) return;
       _showSnackBar('Member removed', Colors.green);
-      setState(() {});
+      _refreshWallet();
     } catch (e) {
       if (!mounted) return;
       _showSnackBar('Error: $e', Colors.red);
@@ -1921,7 +1775,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) => DraggableScrollableSheet(
+      builder: (sheetContext) => DraggableScrollableSheet(
         initialChildSize: 0.6,
         minChildSize: 0.4,
         maxChildSize: 0.9,
@@ -1941,9 +1795,10 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                         for (var alert in alerts.where((a) => !a.isRead)) {
                           await _alertService.markAsRead(alert.id);
                         }
-                        Navigator.pop(context);
+                        if (!mounted) return; // ← ADD THIS
+                        Navigator.pop(sheetContext);
                         _loadUnreadAlerts();
-                        setState(() {});
+                        _refreshWallet();
                       },
                       child: const Text('Mark All Read'),
                     ),
@@ -1957,26 +1812,24 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.notifications_off,
-                        size: 64, color: Colors.grey[300]),
+                    Icon(Icons.notifications_off, size: 64, color: Colors.grey[300]),
                     const SizedBox(height: 16),
-                    Text('No alerts',
-                        style: TextStyle(
-                            fontSize: 16, color: Colors.grey[600])),
+                    Text('No alerts', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
                   ],
                 ),
               )
                   : ListView.builder(
                 controller: scrollController,
                 itemCount: alerts.length,
-                itemBuilder: (context, index) =>
-                    _buildAlertCard(alerts[index]),
+                itemBuilder: (context, index) => _buildAlertCard(alerts[index]),
               ),
             ),
           ],
         ),
       ),
-    ).then((_) => _loadUnreadAlerts());
+    ).then((_) {
+      if (mounted) _loadUnreadAlerts(); // ← ADD MOUNTED CHECK
+    });
   }
 
   Widget _buildAlertCard(AlertModel alert) {
@@ -2008,6 +1861,7 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       ),
       onDismissed: (direction) async {
         await _alertService.deleteAlert(alert.id);
+        if (!mounted) return; // ← ADD THIS
         _loadUnreadAlerts();
       },
       child: Container(
@@ -2016,30 +1870,25 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
           color: alert.isRead ? Colors.white : color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: alert.isRead ? Colors.grey[300]! : color.withOpacity(0.3),
-          ),
+              color: alert.isRead ? Colors.grey[300]! : color.withOpacity(0.3)),
         ),
         child: ListTile(
           leading: Icon(icon, color: color),
           title: Text(alert.message,
               style: TextStyle(
-                  fontWeight:
-                  alert.isRead ? FontWeight.normal : FontWeight.bold)),
+                  fontWeight: alert.isRead ? FontWeight.normal : FontWeight.bold)),
           subtitle: Text(_formatAlertDate(alert.createdAt),
               style: TextStyle(fontSize: 12, color: Colors.grey[600])),
           trailing: alert.isRead
               ? null
-              : Container(
-            width: 8,
-            height: 8,
-            decoration:
-            BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
+              : Container(width: 8, height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           onTap: () async {
             if (!alert.isRead) {
               await _alertService.markAsRead(alert.id);
+              if (!mounted) return; // ← ADD THIS
               _loadUnreadAlerts();
-              setState(() {});
+              _refreshWallet();
             }
           },
         ),
@@ -2069,25 +1918,26 @@ class _WalletDetailsScreenState extends State<WalletDetailsScreen> {
       context,
       MaterialPageRoute(builder: (context) => EditWalletScreen(wallet: wallet)),
     );
-    if (result == true && mounted) setState(() {});
+    if (result == true && mounted) _refreshWallet();
   }
 
   void _confirmDelete() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Wallet'),
         content: const Text(
           'Are you sure you want to delete this wallet? This will also delete all associated budgets and transactions.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.of(dialogContext).pop();
+              if (!mounted) return; // ← ADD THIS
               await _deleteWallet();
             },
             style: ElevatedButton.styleFrom(

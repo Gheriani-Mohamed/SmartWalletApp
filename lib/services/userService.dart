@@ -5,7 +5,7 @@ import 'package:smart_wallet_app/utils/constants.dart';
 
 class UserService {
   final storage = const FlutterSecureStorage();
-  static const String baseUrl = AppConstants.apiBaseUrl;
+  static  String baseUrl = AppConstants.apiBaseUrl;
 
   Future<void> updateProfile({
     required String name,

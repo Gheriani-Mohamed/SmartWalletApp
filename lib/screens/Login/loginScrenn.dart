@@ -4,6 +4,8 @@ import 'package:smart_wallet_app/utils/constants.dart';
 import 'package:smart_wallet_app/screens/Login/RegisterScreen.dart';
 import 'package:smart_wallet_app/screens/Wallet/walletListScreen.dart';
 
+import 'forgetPasswordScrenn.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -74,7 +76,28 @@ class _LoginScreenState extends State<LoginScreen> {
                     obscureText: _obscurePassword,
                     validator: (v) => v == null || v.isEmpty ? 'Enter password' : null,
                   ),
-                  const SizedBox(height: 24),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ForgotPasswordScreen(),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: AppConstants.primaryGreen,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
@@ -106,6 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;

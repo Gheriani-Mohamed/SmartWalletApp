@@ -6,7 +6,7 @@ import 'package:smart_wallet_app/utils/constants.dart';
 
 class AuthService {
   final storage = const FlutterSecureStorage();
-  static const String baseUrl = AppConstants.apiBaseUrl;
+  static  String baseUrl = AppConstants.apiBaseUrl;
 
   // Register
   Future<Map<String, dynamic>> register(String name, String email, String password) async {
@@ -90,7 +90,38 @@ class AuthService {
       throw Exception('Failed to get user');
     }
   }
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/forgot-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'email': email}),
+    );
 
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      final error = json.decode(response.body);
+      throw Exception(error['error'] ?? 'Failed to send reset code');
+    }
+  }
+
+// Reset password with code
+  Future<void> resetPassword(String email, String code, String newPassword) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/reset-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final error = json.decode(response.body);
+      throw Exception(error['error'] ?? 'Failed to reset password');
+    }
+  }
   // Change password
   Future<void> changePassword(String currentPassword, String newPassword) async {
     final token = await getToken();
